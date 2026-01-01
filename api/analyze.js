@@ -2,40 +2,61 @@
 export default async function handler(req, res) {
   const { id } = req.query;
 
-  if (!id) {
-    return res.status(400).json({ error: 'Missing ID' });
-  }
+  if (!id) return res.status(400).json({ error: 'Missing ID' });
+
+  // 通用 Header
+  const headers = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36',
+    'Referer': `https://www.pixiv.net/artworks/${id}`,
+  };
 
   try {
-    // 请求 Pixiv 官方接口获取图片详情 (包含多图)
-    // 伪造 User-Agent 和 Referer 非常重要
-    const targetUrl = `https://www.pixiv.net/ajax/illust/${id}/pages?lang=zh`;
+    // 1. 先获取作品基本信息，判断类型
+    const infoUrl = `https://www.pixiv.net/ajax/illust/${id}?lang=zh`;
+    const infoRes = await fetch(infoUrl, { headers });
     
-    const response = await fetch(targetUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36',
-        'Referer': `https://www.pixiv.net/artworks/${id}`,
-        // 部分接口需要 Cookie 才能看 R18，这里仅演示公开接口
-      }
-    });
+    if (!infoRes.ok) return res.status(infoRes.status).json({ error: 'Pixiv API Error' });
+    
+    const infoData = await infoRes.json();
+    if (infoData.error) return res.status(404).json({ error: 'Artwork not found' });
 
-    if (!response.ok) {
-      return res.status(response.status).json({ error: 'Pixiv API Error' });
+    const illustType = infoData.body.illustType; // 0=插画, 1=漫画, 2=动图(Ugoira)
+
+    // 2. 如果是动图 (Type = 2)
+    if (illustType === 2) {
+      const metaUrl = `https://www.pixiv.net/ajax/illust/${id}/ugoira_meta?lang=zh`;
+      const metaRes = await fetch(metaUrl, { headers });
+      const metaData = await metaRes.json();
+
+      // 设置缓存
+      res.setHeader('Cache-Control', 'public, max-age=86400, s-maxage=86400');
+
+      return res.status(200).json({
+        isUgoira: true,
+        title: infoData.body.title,
+        // 动图的 ZIP 包地址
+        original: metaData.body.originalSrc, 
+        // 每一帧的延迟数据
+        frames: metaData.body.frames, 
+        // 封面图 (静态)
+        cover: infoData.body.urls.original 
+      });
     }
 
-    const data = await response.json();
+    // 3. 如果是普通插画/漫画 (Type = 0 or 1)
+    const pagesUrl = `https://www.pixiv.net/ajax/illust/${id}/pages?lang=zh`;
+    const pagesRes = await fetch(pagesUrl, { headers });
+    const pagesData = await pagesRes.json();
 
-    if (data.error) {
-      return res.status(404).json({ error: 'Artwork not found or restricted' });
-    }
+    const images = pagesData.body.map(item => item.urls.original);
 
-    // 提取 urls.original
-    const images = data.body.map(item => item.urls.original);
-
-    // 设置缓存，避免重复查询同一 ID
     res.setHeader('Cache-Control', 'public, max-age=86400, s-maxage=86400');
     
-    res.status(200).json({ images });
+    return res.status(200).json({
+      isUgoira: false,
+      title: infoData.body.title,
+      images: images
+    });
 
   } catch (error) {
     console.error(error);
