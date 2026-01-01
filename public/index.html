@@ -1,396 +1,171 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pixiv Pro | Fluent Design</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect x=%2210%22 y=%2210%22 width=%2280%22 height=%2280%22 rx=%2224%22 fill=%22%23202020%22 stroke=%22%2360cdff%22 stroke-width=%226%22/><path d=%22M30 70 L50 40 L70 70 Z%22 fill=%22%2360cdff%22/><circle cx=%2270%22 cy=%2230%22 r=%228%22 fill=%22%2360cdff%22/></svg>">
+// 1. 下载核心函数 (修复：即使不知道总大小也要回调)
+async function fetchAndUnzipUgoira(onProgress) {
+    if (framesCache) return framesCache;
     
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js"></script>
-
-    <style>
-        :root {
-            --bg-base: #202020; --surface-card: rgba(45, 45, 45, 0.6); --surface-flyout: #2c2c2c;
-            --surface-stroke: rgba(255, 255, 255, 0.08); --accent-default: #60cdff;
-            --text-primary: #ffffff; --text-secondary: rgba(255, 255, 255, 0.7);
-            --ease-fluent: cubic-bezier(0.1, 0.9, 0.2, 1); --r-md: 8px; --r-xl: 18px;
-        }
-
-        * { box-sizing: border-box; outline: none; }
-        body { margin: 0; font-family: "Segoe UI Variable", sans-serif; background-color: var(--bg-base); color: var(--text-primary); min-height: 100vh; display: flex; flex-direction: column; overflow-x: hidden; }
-
-        #bg-layer { position: fixed; inset:0; z-index: -2; background-size: cover; background-position: center; opacity: 0; transition: opacity 1.5s; filter: saturate(1.1); }
-        #bg-overlay { position: fixed; inset:0; z-index: -1; background: linear-gradient(180deg, rgba(32,32,32,0.7) 0%, rgba(32,32,32,0.9) 100%); backdrop-filter: blur(20px); }
-
-        header { position: fixed; top: 0; width: 100%; height: 64px; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; z-index: 100; background: rgba(32, 32, 32, 0.6); backdrop-filter: blur(30px); border-bottom: 1px solid var(--surface-stroke); }
-        .brand { font-weight: 600; font-size: 1.1rem; display: flex; align-items: center; gap: 10px; }
-        .header-actions { display: flex; gap: 8px; }
-        .icon-btn { background: transparent; border: none; color: var(--text-secondary); width: 36px; height: 36px; border-radius: var(--r-md); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s; position: relative; }
-        .icon-btn:hover { background: rgba(255,255,255,0.08); color: var(--text-primary); }
-        .status-dot { position: absolute; top: 6px; right: 6px; width: 6px; height: 6px; background: var(--accent-default); border-radius: 50%; display: none; }
-
-        main { flex: 1; width: 100%; max-width: 860px; margin: 100px auto 40px; padding: 0 20px; display: flex; flex-direction: column; }
-        .hero-section { text-align: center; margin-bottom: 40px; }
-        .hero-section h1 { font-size: 2.8rem; margin: 0; background: linear-gradient(135deg, #fff 0%, #aaa 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        
-        .input-wrapper { position: relative; background: rgba(255,255,255,0.05); border: 1px solid var(--surface-stroke); border-radius: 32px; padding: 4px; display: flex; align-items: center; box-shadow: 0 8px 32px rgba(0,0,0,0.2); backdrop-filter: blur(10px); }
-        .input-wrapper:focus-within { background: rgba(0,0,0,0.5); border-color: rgba(96,205,255,0.5); transform: translateY(-2px); }
-        .input-wrapper input { flex: 1; background: transparent; border: none; color: #fff; padding: 14px 20px; font-size: 1rem; }
-        
-        .toolbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-top: 30px; opacity: 0; pointer-events: none; transition: 0.4s; }
-        .toolbar.active { opacity: 1; pointer-events: auto; }
-        .info-chip { font-size: 0.9rem; background: rgba(255,255,255,0.06); padding: 8px 16px; border-radius: 20px; border: 1px solid var(--surface-stroke); backdrop-filter: blur(10px); }
-        
-        .gallery-container { margin-top: 24px; }
-        .grid-view { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px; }
-        .grid-item { background: var(--surface-card); border: 1px solid var(--surface-stroke); border-radius: var(--r-md); overflow: hidden; position: relative; aspect-ratio: 1 / 1; opacity: 0; cursor: zoom-in; animation: slideUp 0.5s var(--ease-fluent) forwards; }
-        .grid-item img { width: 100%; height: 100%; object-fit: cover; }
-
-        .single-view { display: flex; justify-content: center; width: 100%; }
-        .single-card { background: var(--surface-card); border: 1px solid var(--surface-stroke); border-radius: var(--r-xl); overflow: hidden; box-shadow: 0 24px 60px rgba(0,0,0,0.4); animation: scaleIn 0.5s forwards; position: relative; max-width: 100%; }
-        .single-card img, .single-card canvas { display: block; max-height: 75vh; max-width: 100%; width: auto; object-fit: contain; }
-        
-        /* 模态框 (Dialogs) & 进度条 */
-        .dialog-backdrop {
-            position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(10px);
-            z-index: 2000; display: flex; align-items: center; justify-content: center;
-            opacity: 0; pointer-events: none; transition: 0.3s;
-        }
-        .dialog-backdrop.open { opacity: 1; pointer-events: auto; }
-        .dialog-card {
-            background: var(--surface-flyout); border: 1px solid var(--surface-stroke);
-            width: 90%; max-width: 480px; border-radius: var(--r-xl);
-            padding: 24px; box-shadow: 0 25px 50px rgba(0,0,0,0.5);
-            transform: scale(0.95); transition: 0.3s var(--ease-fluent);
-        }
-        .dialog-backdrop.open .dialog-card { transform: scale(1); }
-        .dialog-header { font-size: 1.25rem; font-weight: 600; margin-bottom: 16px; }
-        .dialog-footer { margin-top: 24px; display: flex; justify-content: flex-end; gap: 12px; }
-        .dialog-btn { background: rgba(255,255,255,0.06); border: 1px solid var(--surface-stroke); color: #fff; padding: 8px 20px; border-radius: var(--r-md); cursor: pointer; }
-        .dialog-btn.primary { background: var(--accent-default); color: #000; border: none; }
-        textarea.code-input { width: 100%; height: 120px; background: rgba(0,0,0,0.3); border: 1px solid var(--surface-stroke); border-radius: var(--r-md); color: #fff; padding: 12px; font-family: monospace; resize: vertical; margin-top: 10px; }
-        
-        .progress-card { text-align: center; }
-        .spinner { width: 40px; height: 40px; border: 4px solid rgba(255,255,255,0.2); border-top-color: var(--accent-default); border-radius: 50%; animation: spin 1s linear infinite; margin: 20px auto 16px; }
-        .progress-bar { width: 100%; height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden; display: none; }
-        .progress-fill { height: 100%; width: 0%; background: var(--accent-default); transition: width 0.1s linear; }
-
-        .toast { position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%) translateY(20px); background: #333; border: 1px solid var(--surface-stroke); padding: 10px 24px; border-radius: 24px; opacity: 0; pointer-events: none; transition: 0.4s; z-index: 3000; }
-        .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
-
-        @keyframes spin { to { transform: rotate(360deg); } }
-        @keyframes scaleIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-    </style>
-</head>
-<body>
-
-    <!-- Background Layers -->
-    <div id="bg-layer"></div>
-    <div id="bg-overlay"></div>
-
-    <!-- Header -->
-    <header>
-        <div class="brand">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
-            Pixiv Proxy
-        </div>
-        <div class="header-actions">
-            <button class="icon-btn" onclick="openModal('aboutModal')" title="关于">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
-            </button>
-            <button class="icon-btn" onclick="openModal('settingsModal')" title="设置 Cookie">
-                <div class="status-dot" id="cookieStatus"></div>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 1 0 10 10 4 4 0 0 1-5-5 4 4 0 0 1-5-5"></path><path d="M8.5 8.5v.01"></path><path d="M16 15.5v.01"></path><path d="M12 12v.01"></path><path d="M11 17v.01"></path><path d="M7 14v.01"></path></svg>
-            </button>
-        </div>
-    </header>
-
-    <!-- Main Content -->
-    <main>
-        <section class="hero-section">
-            <h1>Pixiv 极速预览</h1>
-        </section>
-
-        <section class="input-wrapper">
-            <input type="text" id="inputUrl" placeholder="粘贴 Pixiv 作品链接或 ID" autocomplete="off">
-            <button class="go-btn" id="goBtn">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-            </button>
-        </section>
-
-        <section class="toolbar" id="toolbar">
-            <div class="info-chip" id="countInfo">等待输入...</div>
-            <div class="action-group" id="actionGroup">
-                <!-- Buttons injected by JS -->
-            </div>
-        </section>
-
-        <section class="gallery-container" id="gallery"></section>
-    </main>
+    const zipUrl = getProxyUrl(currentData.original);
+    const response = await fetch(zipUrl);
+    if (!response.ok) throw new Error(`HTTP Error ${response.status}`);
     
-    <!-- Global Modals -->
-    <div class="dialog-backdrop" id="settingsModal" onclick="if(event.target===this)closeModal('settingsModal')">
-        <div class="dialog-card"><div class="dialog-header">自定义 Cookie</div><div class="dialog-body"><p>如需访问 R-18 内容，请在此填入已登录 Pixiv 账号的完整 Cookie。</p><textarea class="code-input" id="cookieInput"></textarea></div><div class="dialog-footer"><button class="dialog-btn" onclick="closeModal('settingsModal')">取消</button><button class="dialog-btn primary" onclick="saveCookie()">保存</button></div></div>
-    </div>
-    <div class="dialog-backdrop" id="aboutModal" onclick="if(event.target===this)closeModal('aboutModal')">
-        <div class="dialog-card"><div class="dialog-header">关于 & 免责声明</div><div class="dialog-body"><p><strong>Pixiv Proxy (Vercel Edge Edition)</strong><br>一个基于 Serverless 技术的 Pixiv 图片反向代理与预览工具。</p><hr style="border:0;border-top:1px solid var(--surface-stroke);margin:15px 0;"><p style="font-size:0.85rem;color:#aaa;"><strong>⚠️ 免责声明：</strong><br>1. 本项目仅供学习与技术交流，不存储任何图片数据。<br>2. 本服务不隶属于 Pixiv Inc.，内容版权归原作者所有。<br>3. 请勿将本服务用于商业用途或大规模采集。<br>4. 用户需自行承担配置自定义 Cookie 所带来的账号风险。</p></div><div class="dialog-footer"><button class="dialog-btn primary" onclick="closeModal('aboutModal')">我已知晓</button></div></div>
-    </div>
-    <div class="dialog-backdrop" id="progressModal">
-        <div class="dialog-card progress-card"><div class="dialog-header" id="progressTitle">处理中...</div><div class="spinner" id="progressSpinner"></div><div class="progress-bar" id="progressBar"><div class="progress-fill" id="progressFill"></div></div><p id="progressText" style="color:var(--text-secondary);margin-top:16px;">请稍候</p></div>
-    </div>
-    <div class="toast" id="toast">提示消息</div>
+    const contentLength = +response.headers.get('Content-Length'); // 可能为 0 或 NaN
+    const reader = response.body.getReader();
+    
+    let receivedLength = 0; 
+    let chunks = [];
+    
+    while(true) {
+        const {done, value} = await reader.read();
+        if (done) break;
+        chunks.push(value);
+        receivedLength += value.length;
+        
+        // 🟢 关键修复：无论有没有 contentLength，都调用回调
+        // 如果 contentLength 是 0/null，传过去就是 0，代表不确定进度
+        onProgress(receivedLength, contentLength || 0, 'download');
+    }
+    
+    onProgress(receivedLength, contentLength || receivedLength, 'unzip'); // 进入解压阶段
+    
+    const blob = new Blob(chunks);
+    const zip = await JSZip.loadAsync(blob);
+    const frames = [];
+    
+    for (let i = 0; i < currentData.frames.length; i++) {
+        const f = currentData.frames[i];
+        const base64 = await zip.file(f.file).async('base64');
+        const img = new Image();
+        img.src = "data:image/jpeg;base64," + base64;
+        await new Promise(r => img.onload = r);
+        frames.push({ img, delay: f.delay });
+    }
+    framesCache = frames;
+    return frames;
+}
 
-    <script>
-        // --- Init & State ---
-        (function(){
-            const bg = document.getElementById('bg-layer'); const img = new Image();
-            img.src = `https://t.alcy.cc/moez?t=${Date.now()}`; img.onload = () => { bg.style.backgroundImage = `url('${img.src}')`; bg.style.opacity = 1; };
-            if(localStorage.getItem('user_cookie')) document.getElementById('cookieStatus').style.display='block';
-        })();
-        let currentData = null, framesCache = null;
-
-        // --- UI Interactions ---
-        const input = document.getElementById('inputUrl');
-        document.getElementById('goBtn').onclick = processInput;
-        input.onkeypress = (e) => e.key === 'Enter' && processInput();
-
-        // --- Core Logic ---
-        async function processInput() {
-            const raw = input.value.trim(); if(!raw) return;
-            const gallery = document.getElementById('gallery');
-            const toolbar = document.getElementById('toolbar');
-            
-            gallery.innerHTML = '<div style="text-align:center;margin-top:40px;"><div class="spinner"></div><p>正在分析作品...</p></div>';
-            toolbar.classList.remove('active');
-            currentData = null; framesCache = null;
-
-            try {
-                let id = raw.match(/(?:artworks\/|illust_id=)(\d+)/)?.[1] || raw;
-                if(raw.includes('pximg.net')) { renderDirectImage(raw); return; }
-
-                const headers = {};
-                const userCookie = localStorage.getItem('user_cookie');
-                if(userCookie) headers['x-user-cookie'] = userCookie;
-
-                const res = await fetch(`/analyze/${id}`, { headers });
-                const data = await res.json();
-                if(data.error) throw new Error(data.error);
-                
-                currentData = data;
-                renderContent(data);
-            } catch (err) {
-                gallery.innerHTML = `<div style="text-align:center;margin-top:40px;color:#ff99a4;"><p>❌ ${err.message || '解析失败'}</p></div>`;
-            }
-        }
-
-        // --- Render Logic ---
-        function renderContent(data) {
-            const gallery = document.getElementById('gallery');
-            const toolbar = document.getElementById('toolbar');
-            const countInfo = document.getElementById('countInfo');
-            const actionGroup = document.getElementById('actionGroup');
-            gallery.innerHTML = '';
-            
-            const title = data.title || '无标题';
-
-            if (data.isUgoira) {
-                countInfo.innerText = `🎬 动图 | ${title}`;
-                actionGroup.innerHTML = `
-                    <button class="pill-btn" onclick="convertToGif()">导出 GIF</button>
-                    <button class="pill-btn" onclick="downloadHandler()">下载 ZIP</button>`;
-                gallery.innerHTML = `<div class="single-view"><div class="single-card"><img src="${getProxyUrl(data.cover)}" onclick="playUgoira()"></div></div>`;
+// 2. 播放函数 (适配新进度条逻辑)
+async function playUgoira() {
+    if (!currentData || !currentData.isUgoira) return;
+    
+    const loader = document.getElementById('loader');
+    const fill = document.getElementById('progressFill');
+    const txt = document.getElementById('progressText');
+    
+    loader.classList.add('active');
+    
+    try {
+        const frames = await fetchAndUnzipUgoira((loaded, total, stage) => {
+            if(stage === 'download') {
+                if(total > 0) {
+                    // 🟢 知道总大小：显示百分比
+                    fill.classList.remove('indeterminate');
+                    const pct = loaded / total;
+                    fill.style.width = `${pct * 100}%`;
+                    txt.innerText = `下载中 ${Math.round(pct * 100)}%`;
+                } else {
+                    // 🟢 不知道总大小：显示 MB 数 + 循环动画
+                    fill.classList.add('indeterminate');
+                    fill.style.width = '30%'; // 样式里控制
+                    txt.innerText = `下载中 ${(loaded / 1024 / 1024).toFixed(1)} MB`;
+                }
             } else {
-                const images = data.images;
-                countInfo.innerText = `🖼️ ${images.length}P | ${title}`;
-                actionGroup.innerHTML = `<button class="pill-btn" onclick="downloadHandler()">下载 ZIP</button>`;
-                
-                if (images.length === 1) {
-                    gallery.innerHTML = `<div class="single-view"><div class="single-card"><img src="${getProxyUrl(images[0])}"></div></div>`;
+                // 解码阶段
+                fill.classList.remove('indeterminate');
+                fill.style.width = '100%';
+                txt.innerText = '正在解码帧...';
+            }
+        });
+
+        const canvas = document.getElementById('ugoiraCanvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = frames[0].img.width;
+        canvas.height = frames[0].img.height;
+        
+        document.getElementById('ugoiraCover').style.display = 'none';
+        document.getElementById('playBtn').style.display = 'none';
+        canvas.style.display = 'block';
+        loader.classList.remove('active');
+        
+        let idx = 0;
+        function loop() {
+            ctx.drawImage(frames[idx].img, 0, 0);
+            idx = (idx + 1) % frames.length;
+            setTimeout(() => requestAnimationFrame(loop), frames[idx].delay);
+        }
+        loop();
+
+    } catch (e) {
+        console.error(e);
+        showToast('播放失败: ' + e.message);
+        loader.classList.remove('active');
+    }
+}
+
+// 3. GIF 转换函数 (适配新进度条逻辑)
+async function convertToGif() {
+    if (!currentData.isUgoira) return;
+    gifBtn.disabled = true;
+    
+    const loader = document.getElementById('loader');
+    const fill = document.getElementById('progressFill');
+    const txt = document.getElementById('progressText');
+    
+    // 如果播放器没开，我们要强制显示遮罩层
+    const useOverlay = document.getElementById('playBtn').style.display !== 'none';
+    if(useOverlay) loader.classList.add('active');
+    
+    try {
+        const frames = await fetchAndUnzipUgoira((loaded, total, stage) => {
+            if(useOverlay && stage === 'download') {
+                if(total > 0) {
+                    fill.classList.remove('indeterminate');
+                    fill.style.width = `${(loaded/total)*100}%`;
+                    txt.innerText = `下载素材 ${Math.round((loaded/total)*100)}%`;
                 } else {
-                    gallery.className = 'gallery-container grid-view';
-                    images.forEach((url, idx) => {
-                        gallery.innerHTML += `<div class="grid-item" style="animation-delay:${idx*50}ms"><a href="${getProxyUrl(url)}" target="_blank"><img src="${getProxyUrl(url)}" loading="lazy"></a></div>`;
-                    });
+                    fill.classList.add('indeterminate');
+                    txt.innerText = `下载素材 ${(loaded/1024/1024).toFixed(1)} MB`;
                 }
             }
-            toolbar.classList.add('active');
-        }
-
-        // --- Ugoira & GIF Logic ---
-        async function fetchAndUnzipUgoira(onProgress) {
-            if (framesCache) return framesCache;
-            
-            const zipUrl = getProxyUrl(currentData.original);
-            const response = await fetch(zipUrl);
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            
-            const contentLength = +response.headers.get('Content-Length');
-            const reader = response.body.getReader();
-            let receivedLength = 0, chunks = [];
-            
-            while(true) {
-                const {done, value} = await reader.read(); if (done) break;
-                chunks.push(value); receivedLength += value.length;
-                if(contentLength) onProgress(receivedLength / contentLength, 'download');
-            }
-            
-            onProgress(1, 'unzip');
-            const blob = new Blob(chunks);
-            const zip = await JSZip.loadAsync(blob);
-            const frames = [];
-            for (let i = 0; i < currentData.frames.length; i++) {
-                const f = currentData.frames[i];
-                const base64 = await zip.file(f.file).async('base64');
-                const img = new Image(); img.src = "data:image/jpeg;base64," + base64;
-                await new Promise(r => img.onload = r);
-                frames.push({ img, delay: f.delay });
-            }
-            framesCache = frames;
-            return frames;
-        }
-
-        async function playUgoira() {
-            if (!currentData?.isUgoira) return;
-            
-            updateProgress('show', { title: '播放准备', text: '正在下载资源...', type: 'progress' });
-            
-            try {
-                const frames = await fetchAndUnzipUgoira((pct, stage) => {
-                    if(stage === 'download') updateProgress('update', { text: `下载中 ${Math.round(pct*100)}%`, progress: pct });
-                    else updateProgress('update', { text: '正在解码帧...', type: 'loading' });
-                });
-                
-                const card = document.querySelector('.single-card');
-                card.innerHTML = `<canvas id="ugoiraCanvas"></canvas>`;
-                const canvas = document.getElementById('ugoiraCanvas');
-                const ctx = canvas.getContext('2d');
-                canvas.width = frames[0].img.width; canvas.height = frames[0].img.height;
-                
-                updateProgress('hide');
-                
-                let idx = 0;
-                function loop() {
-                    ctx.drawImage(frames[idx].img, 0, 0);
-                    idx = (idx + 1) % frames.length;
-                    setTimeout(() => requestAnimationFrame(loop), frames[idx].delay);
-                }
-                loop();
-            } catch (e) {
-                showToast('播放失败: ' + e.message);
-                updateProgress('hide');
-            }
+        });
+        
+        if(useOverlay) {
+            fill.classList.remove('indeterminate');
+            fill.style.width = '0%';
+            txt.innerText = '初始化 GIF 引擎...';
+        } else {
+            showToast('正在后台转换 GIF...');
         }
         
-        async function convertToGif() {
-            if (!currentData?.isUgoira) return;
-            const btn = document.querySelector('#actionGroup button:first-child');
-            btn.disabled = true;
-
-            updateProgress('show', { title: '导出 GIF', text: '准备资源...', type: 'progress' });
-
-            try {
-                const frames = await fetchAndUnzipUgoira((pct, stage) => {
-                    if(stage === 'download') updateProgress('update', { text: `下载中 ${Math.round(pct*100)}%`, progress: pct });
-                });
-                
-                updateProgress('update', { text: '初始化 GIF 引擎...', type: 'loading' });
-                
-                const workerBlob = await (await fetch('https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js')).blob();
-                const gif = new GIF({
-                    workers: 2, quality: 10,
-                    width: frames[0].img.width, height: frames[0].img.height,
-                    workerScript: URL.createObjectURL(workerBlob)
-                });
-                
-                frames.forEach(f => gif.addFrame(f.img, {delay: f.delay}));
-                
-                gif.on('progress', p => {
-                    updateProgress('update', { text: `渲染中 ${Math.round(p * 100)}%`, progress: p });
-                });
-                
-                gif.on('finished', blob => {
-                    updateProgress('hide');
-                    saveAs(blob, `Pixiv_GIF_${currentData.title}.gif`);
-                    showToast('✅ GIF 导出成功');
-                });
-                gif.render();
-            } catch (e) { showToast('失败: '+e.message); }
-            finally { updateProgress('hide'); btn.disabled = false; }
-        }
-
-        // --- Helpers ---
-        async function downloadHandler() {
-            if (!currentData) return;
-            const btn = document.querySelector('#actionGroup button:last-child');
-            btn.disabled = true;
-            showToast('开始打包...');
-            try {
-                const zip = new JSZip();
-                if (currentData.isUgoira) {
-                    const blob = await (await fetch(getProxyUrl(currentData.original))).blob();
-                    saveAs(blob, `Pixiv_Ugoira_${currentData.title}.zip`);
-                } else {
-                    const folder = zip.folder(`pixiv_${Date.now()}`);
-                    await Promise.all(currentData.images.map(async url => folder.file(url.split('/').pop(), await (await fetch(getProxyUrl(url))).blob())));
-                    saveAs(await zip.generateAsync({type:"blob"}), `Pixiv_${currentData.title}.zip`);
-                }
-                showToast('✅ 下载已开始');
-            } catch (e) { showToast('❌ 下载失败'); }
-            finally { btn.disabled = false; }
-        }
-
-        function getProxyUrl(original) {
-            if(!original) return '';
-            const path = original.split('pximg.net/')[1];
-            let url = `${window.location.origin}/${path}`;
-            const userCookie = localStorage.getItem('user_cookie');
-            if (userCookie) url += `?token=${encodeURIComponent(userCookie)}`;
-            return url;
-        }
-
-        function renderDirectImage(rawUrl) {
-            document.getElementById('gallery').innerHTML = `<div class="single-view"><div class="single-card"><img src="${getProxyUrl(rawUrl)}"></div></div>`;
-            document.getElementById('toolbar').classList.add('active');
-        }
-
-        // --- UI Utilities ---
-        function openModal(id) {
-            if(id === 'settingsModal') document.getElementById('cookieInput').value = localStorage.getItem('user_cookie') || '';
-            document.getElementById(id).classList.add('open');
-        }
-        function closeModal(id) { document.getElementById(id).classList.remove('open'); }
-        function saveCookie() {
-            const val = document.getElementById('cookieInput').value.trim();
-            if(val) { localStorage.setItem('user_cookie', val); document.getElementById('cookieStatus').style.display='block'; showToast('✅ Cookie 已保存');
-            } else { localStorage.removeItem('user_cookie'); document.getElementById('cookieStatus').style.display='none'; showToast('🗑️ Cookie 已清除'); }
-            closeModal('settingsModal');
-        }
-        function showToast(msg) {
-            const t=document.getElementById('toast');
-            t.innerText=msg; t.classList.add('show');
-            setTimeout(()=>t.classList.remove('show'),3000);
-        }
-        function updateProgress(action, data = {}) {
-            const modal = document.getElementById('progressModal');
-            if (action === 'hide') { modal.classList.remove('open'); return; }
-            
-            document.getElementById('progressTitle').innerText = data.title || '处理中...';
-            document.getElementById('progressText').innerText = data.text || '请稍候';
-            
-            const spinner = document.getElementById('progressSpinner');
-            const bar = document.getElementById('progressBar');
-            spinner.style.display = data.type === 'loading' ? 'block' : 'none';
-            bar.style.display = data.type === 'progress' ? 'block' : 'none';
-
-            if (data.type === 'progress') {
-                document.getElementById('progressFill').style.width = `${(data.progress || 0) * 100}%`;
+        const workerBlob = await (await fetch('https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js')).blob();
+        const gif = new GIF({
+            workers: 2, quality: 10,
+            width: frames[0].img.width, height: frames[0].img.height,
+            workerScript: URL.createObjectURL(workerBlob)
+        });
+        
+        frames.forEach(f => gif.addFrame(f.img, {delay: f.delay}));
+        
+        gif.on('progress', p => {
+            const percent = Math.round(p * 100);
+            if(useOverlay) {
+                fill.classList.remove('indeterminate'); // 渲染时进度是确定的
+                txt.innerText = `渲染 GIF ${percent}%`;
+                fill.style.width = `${percent}%`;
+            } else {
+                showToast(`GIF 渲染中 ${percent}%`);
             }
-            
-            if (action === 'show') modal.classList.add('open');
-        }
-    </script>
-</body>
-</html>
+        });
+        
+        gif.on('finished', blob => {
+            if(useOverlay) loader.classList.remove('active');
+            saveAs(blob, `Pixiv_GIF_${currentData.title}.gif`);
+            showToast('✅ GIF 导出成功');
+            gifBtn.disabled = false;
+        });
+        
+        gif.render();
+        
+    } catch (e) {
+        showToast('失败: ' + e.message);
+        if(useOverlay) loader.classList.remove('active');
+        gifBtn.disabled = false;
+    }
+}
