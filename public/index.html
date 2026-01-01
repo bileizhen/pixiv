@@ -80,8 +80,38 @@
         .loading-layer.active { opacity: 1; pointer-events: auto; }
         .spinner { width: 40px; height: 40px; border: 4px solid rgba(255,255,255,0.3); border-top-color: var(--accent-default); border-radius: 50%; animation: spin 1s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
-        .progress-bar { width: 200px; height: 4px; background: rgba(255,255,255,0.2); border-radius: 2px; margin-top: 16px; overflow: hidden; }
-        .progress-fill { height: 100%; width: 0%; background: var(--accent-default); transition: width 0.1s linear; }
+        /* Progress Bar Container */
+        .progress-bar { 
+            width: 200px; 
+            height: 4px; 
+            background: rgba(255,255,255,0.2); 
+            border-radius: 2px; 
+            margin-top: 16px; 
+            overflow: hidden; 
+            position: relative; /* 关键：为了让内部绝对定位生效 */
+        }
+        
+        /* 确定进度 (有百分比时) */
+        .progress-fill { 
+            height: 100%; 
+            width: 0%; 
+            background: var(--accent-default); 
+            transition: width 0.1s linear; 
+            position: absolute;
+            left: 0;
+            top: 0;
+        }
+        
+        /* 🟢 新增：不确定进度 (不知道大小时，左右滑动) */
+        .progress-fill.indeterminate {
+            width: 30% !important; /* 固定长度 */
+            animation: indeterminate-slide 1.5s infinite ease-in-out;
+        }
+        
+        @keyframes indeterminate-slide {
+            0% { left: -30%; }
+            100% { left: 100%; }
+        }
 
         .dialog-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(5px); z-index: 2000; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: 0.3s; }
         .dialog-backdrop.open { opacity: 1; pointer-events: auto; }
