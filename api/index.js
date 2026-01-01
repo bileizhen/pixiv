@@ -22,7 +22,7 @@ export default async function handler(request) {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36',
     // 🔥【关键】在这里直接填入你的 Cookie，不要用 process.env
     // 格式必须是: PHPSESSID=你的ID
-    'Cookie': 'PHPSESSID=89665003_TcEEugHTdp444gcCrryrFldbhWsc96n8' 
+    'Cookie': 'PHPSESSID="89665003_TcEEugHTdp444gcCrryrFldbhWsc96n8"' 
   };
 
   try {
@@ -50,3 +50,4 @@ export default async function handler(request) {
     return new Response(`Proxy Error: ${err.message}`, { status: 500 });
   }
 }
+
