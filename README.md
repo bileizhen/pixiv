@@ -2,7 +2,7 @@
 
 <div align="center">
 
-<img width="2219" height="1504" alt="图片" src="https://github.bileizhen.top/user-attachments/assets/f27511d4-64be-4f24-81f3-3fc27b564410" />
+[![img]()]（https://github.bileizhen.top/user-attachments/assets/f27511d4-64be-4f24-81f3-3fc27b564410）
 
 <!-- 请替换上面的链接为您自己的仓库链接，或者放一张实际的网页截图 -->
 
