@@ -239,15 +239,18 @@
         }
 
         // --- 核心工具：下载并解压 Ugoira 资源 ---
-        async function fetchAndUnzipUgoira(onProgress) {
-            if (framesCache) return framesCache; // 如果内存里已经有，直接返回
-
-            const zipUrl = getProxyUrl(currentData.original);
+            async function fetchAndUnzipUgoira(onProgress) {
+                if (framesCache) return framesCache;
+            
+                const zipUrl = getProxyUrl(currentData.original);
             
             // 1. 带进度的 Fetch
             const response = await fetch(zipUrl);
+            if (!response.ok) {
+                throw new Error(`下载失败 HTTP ${response.status}: 请检查 Vercel 4.5MB 限制或网络连接`);
+            }
             const contentLength = +response.headers.get('Content-Length');
-            const reader = response.body.getReader();
+            const reader = response.body.getReader();  
 
             let receivedLength = 0;
             let chunks = [];
