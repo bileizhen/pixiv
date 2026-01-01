@@ -242,61 +242,172 @@
         // Ugoira & GIF Logic
         async function fetchAndUnzipUgoira(onProgress) {
             if (framesCache) return framesCache;
+            
             const zipUrl = getProxyUrl(currentData.original);
             const response = await fetch(zipUrl);
             if (!response.ok) throw new Error(`HTTP Error ${response.status}`);
-            const contentLength = +response.headers.get('Content-Length');
+            
+            const contentLength = +response.headers.get('Content-Length'); // 可能为 0 或 NaN
             const reader = response.body.getReader();
-            let receivedLength = 0; let chunks = [];
+            
+            let receivedLength = 0; 
+            let chunks = [];
+            
             while(true) {
                 const {done, value} = await reader.read();
-                if (done) break; chunks.push(value); receivedLength += value.length;
-                onProgress(receivedLength, contentLength, 'download');
+                if (done) break;
+                chunks.push(value);
+                receivedLength += value.length;
+                
+                // 🟢 关键修复：无论有没有 contentLength，都调用回调
+                // 如果 contentLength 是 0/null，传过去就是 0，代表不确定进度
+                onProgress(receivedLength, contentLength || 0, 'download');
             }
-            onProgress(receivedLength, contentLength, 'unzip');
-            const blob = new Blob(chunks); const zip = await JSZip.loadAsync(blob);
+            
+            onProgress(receivedLength, contentLength || receivedLength, 'unzip'); // 进入解压阶段
+            
+            const blob = new Blob(chunks);
+            const zip = await JSZip.loadAsync(blob);
             const frames = [];
+            
             for (let i = 0; i < currentData.frames.length; i++) {
-                const f = currentData.frames[i]; const base64 = await zip.file(f.file).async('base64');
-                const img = new Image(); img.src = "data:image/jpeg;base64," + base64;
-                await new Promise(r => img.onload = r); frames.push({ img, delay: f.delay });
+                const f = currentData.frames[i];
+                const base64 = await zip.file(f.file).async('base64');
+                const img = new Image();
+                img.src = "data:image/jpeg;base64," + base64;
+                await new Promise(r => img.onload = r);
+                frames.push({ img, delay: f.delay });
             }
-            return framesCache = frames;
+            framesCache = frames;
+            return frames;
         }
 
+        // 2. 播放函数 (适配新进度条逻辑)
         async function playUgoira() {
-            if (!currentData.isUgoira) return;
-            const loader = document.getElementById('loader'); loader.classList.add('active');
+            if (!currentData || !currentData.isUgoira) return;
+            
+            const loader = document.getElementById('loader');
+            const fill = document.getElementById('progressFill');
+            const txt = document.getElementById('progressText');
+            
+            loader.classList.add('active');
+            
             try {
                 const frames = await fetchAndUnzipUgoira((loaded, total, stage) => {
-                    const text = total ? `下载中 ${Math.round(loaded/total*100)}%` : `下载中 ${(loaded/1024/1024).toFixed(1)}MB`;
-                    updateProgressUI(stage === 'download' ? (total ? loaded/total : 0) : 1, stage === 'download' ? text : '解码中...');
+                    if(stage === 'download') {
+                        if(total > 0) {
+                            // 🟢 知道总大小：显示百分比
+                            fill.classList.remove('indeterminate');
+                            const pct = loaded / total;
+                            fill.style.width = `${pct * 100}%`;
+                            txt.innerText = `下载中 ${Math.round(pct * 100)}%`;
+                        } else {
+                            // 🟢 不知道总大小：显示 MB 数 + 循环动画
+                            fill.classList.add('indeterminate');
+                            fill.style.width = '30%'; // 样式里控制
+                            txt.innerText = `下载中 ${(loaded / 1024 / 1024).toFixed(1)} MB`;
+                        }
+                    } else {
+                        // 解码阶段
+                        fill.classList.remove('indeterminate');
+                        fill.style.width = '100%';
+                        txt.innerText = '正在解码帧...';
+                    }
                 });
-                const canvas = document.getElementById('ugoiraCanvas'); const ctx = canvas.getContext('2d');
-                canvas.width = frames[0].img.width; canvas.height = frames[0].img.height;
-                document.getElementById('ugoiraCover').style.display='none'; document.getElementById('playBtn').style.display='none';
-                canvas.style.display='block'; loader.classList.remove('active');
-                let idx = 0; function loop() { ctx.drawImage(frames[idx].img,0,0); idx=(idx+1)%frames.length; setTimeout(()=>requestAnimationFrame(loop), frames[idx].delay); } loop();
-            } catch (e) { console.error(e); showToast('播放失败: ' + e.message); loader.classList.remove('active'); }
-        }
         
+                const canvas = document.getElementById('ugoiraCanvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = frames[0].img.width;
+                canvas.height = frames[0].img.height;
+                
+                document.getElementById('ugoiraCover').style.display = 'none';
+                document.getElementById('playBtn').style.display = 'none';
+                canvas.style.display = 'block';
+                loader.classList.remove('active');
+                
+                let idx = 0;
+                function loop() {
+                    ctx.drawImage(frames[idx].img, 0, 0);
+                    idx = (idx + 1) % frames.length;
+                    setTimeout(() => requestAnimationFrame(loop), frames[idx].delay);
+                }
+                loop();
+        
+            } catch (e) {
+                console.error(e);
+                showToast('播放失败: ' + e.message);
+                loader.classList.remove('active');
+            }
+        }
+        // 3. GIF 转换函数 (适配新进度条逻辑)
         async function convertToGif() {
             if (!currentData.isUgoira) return;
-            gifBtn.disabled = true; const loader = document.getElementById('loader');
-            loader.classList.add('active'); updateProgressUI(0, '准备资源...');
+            gifBtn.disabled = true;
+            
+            const loader = document.getElementById('loader');
+            const fill = document.getElementById('progressFill');
+            const txt = document.getElementById('progressText');
+            
+            // 如果播放器没开，我们要强制显示遮罩层
+            const useOverlay = document.getElementById('playBtn').style.display !== 'none';
+            if(useOverlay) loader.classList.add('active');
+            
             try {
                 const frames = await fetchAndUnzipUgoira((loaded, total, stage) => {
-                    const text = total ? `下载素材 ${Math.round(loaded/total*100)}%` : `下载素材 ${(loaded/1024/1024).toFixed(1)}MB`;
-                    updateProgressUI(stage==='download'?(total?loaded/total:0):1, stage==='download'?text:'解码中...');
+                    if(useOverlay && stage === 'download') {
+                        if(total > 0) {
+                            fill.classList.remove('indeterminate');
+                            fill.style.width = `${(loaded/total)*100}%`;
+                            txt.innerText = `下载素材 ${Math.round((loaded/total)*100)}%`;
+                        } else {
+                            fill.classList.add('indeterminate');
+                            txt.innerText = `下载素材 ${(loaded/1024/1024).toFixed(1)} MB`;
+                        }
+                    }
                 });
-                updateProgressUI(0, '初始化 GIF 引擎...');
+                
+                if(useOverlay) {
+                    fill.classList.remove('indeterminate');
+                    fill.style.width = '0%';
+                    txt.innerText = '初始化 GIF 引擎...';
+                } else {
+                    showToast('正在后台转换 GIF...');
+                }
+                
                 const workerBlob = await (await fetch('https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js')).blob();
-                const gif = new GIF({ workers: 2, quality: 10, width: frames[0].img.width, height: frames[0].img.height, workerScript: URL.createObjectURL(workerBlob) });
+                const gif = new GIF({
+                    workers: 2, quality: 10,
+                    width: frames[0].img.width, height: frames[0].img.height,
+                    workerScript: URL.createObjectURL(workerBlob)
+                });
+                
                 frames.forEach(f => gif.addFrame(f.img, {delay: f.delay}));
-                gif.on('progress', p => updateProgressUI(p, `渲染中 ${Math.round(p*100)}%`));
-                gif.on('finished', blob => { loader.classList.remove('active'); saveAs(blob, `Pixiv_GIF_${currentData.title}.gif`); showToast('✅ 导出成功'); });
+                
+                gif.on('progress', p => {
+                    const percent = Math.round(p * 100);
+                    if(useOverlay) {
+                        fill.classList.remove('indeterminate'); // 渲染时进度是确定的
+                        txt.innerText = `渲染 GIF ${percent}%`;
+                        fill.style.width = `${percent}%`;
+                    } else {
+                        showToast(`GIF 渲染中 ${percent}%`);
+                    }
+                });
+                
+                gif.on('finished', blob => {
+                    if(useOverlay) loader.classList.remove('active');
+                    saveAs(blob, `Pixiv_GIF_${currentData.title}.gif`);
+                    showToast('✅ GIF 导出成功');
+                    gifBtn.disabled = false;
+                });
+                
                 gif.render();
-            } catch (e) { showToast('失败: '+e.message); loader.classList.remove('active'); } finally { gifBtn.disabled = false; }
+                
+            } catch (e) {
+                showToast('失败: ' + e.message);
+                if(useOverlay) loader.classList.remove('active');
+                gifBtn.disabled = false;
+            }
         }
 
         // Helper Functions
