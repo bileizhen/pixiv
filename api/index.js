@@ -1,28 +1,23 @@
 // api/index.js
-// 这一行非常重要，告诉 Vercel 使用 Edge 运行时
+
+// 🔥 核心关键：启用 Edge Runtime 以突破 4.5MB 限制
 export const config = {
-  runtime: 'edge',
+  runtime: 'edge', 
 };
 
 export default async function handler(request) {
   const url = new URL(request.url);
-  
-  // 获取路径 (去掉开头的 /)
-  // 例如请求 https://你的域名/img-zip-ugoira/...
-  // pathname 就是 /img-zip-ugoira/...
   const path = url.pathname;
 
-  // 简单的防误触
   if (path === '/' || path === '/favicon.ico') {
     return new Response('Pixiv Proxy (Edge) is running.', { status: 200 });
   }
 
-  // 拼接目标 Pixiv 地址
-  // 注意：Edge Runtime 里 url.search (查询参数) 也要带上
+  // 拼接 Pixiv 图片服务器地址
+  // Edge Runtime 中 request.url 包含完整路径，我们需要提取并拼接
   const targetUrl = `https://i.pximg.net${path}${url.search}`;
 
   try {
-    // 发起请求
     const response = await fetch(targetUrl, {
       headers: {
         'Referer': 'https://www.pixiv.net/',
@@ -30,19 +25,16 @@ export default async function handler(request) {
       }
     });
 
-    // 检查 Pixiv 是否返回错误
     if (!response.ok) {
-      return new Response(`Pixiv Error: ${response.statusText}`, { status: response.status });
+      return new Response(`Pixiv Error: ${response.status} ${response.statusText}`, { status: response.status });
     }
 
-    // 构造新响应头
+    // 重构响应头
     const newHeaders = new Headers(response.headers);
     newHeaders.set('Access-Control-Allow-Origin', '*');
-    // 设置强缓存，减少回源
     newHeaders.set('Cache-Control', 'public, max-age=604800, s-maxage=604800');
 
-    // 关键点：直接透传 response.body (Stream)，不使用 await response.arrayBuffer()
-    // 这样可以突破 4.5MB 限制，且内存占用极低
+    // 🔥 核心关键：直接透传 Body 流，不进行 buffer 缓冲
     return new Response(response.body, {
       status: response.status,
       headers: newHeaders
