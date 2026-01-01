@@ -4,324 +4,684 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pixiv Pro | Fluent Design</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect x=%2210%22 y=%2210%22 width=%2280%22 height=%2280%22 rx=%2220%22 fill=%22%23202020%22 stroke=%22%2360cdff%22 stroke-width=%225%22/><circle cx=%2235%22 cy=%2235%22 r=%2210%22 fill=%22%2360cdff%22/><path d=%22M20 80 L40 50 L60 70 L70 60 L90 80 Z%22 fill=%22%2360cdff%22/></svg>">
+    <!-- Favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect x=%2210%22 y=%2210%22 width=%2280%22 height=%2280%22 rx=%2224%22 fill=%22%23202020%22 stroke=%22%2360cdff%22 stroke-width=%226%22/><path d=%22M30 70 L50 40 L70 70 Z%22 fill=%22%2360cdff%22/><circle cx=%2270%22 cy=%2230%22 r=%228%22 fill=%22%2360cdff%22/></svg>">
     
+    <!-- 依赖库 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js"></script>
 
     <style>
         :root {
-            --bg-base: #202020; --surface-layer: rgba(30, 30, 30, 0.6); --border-color: rgba(255, 255, 255, 0.1);
-            --accent: #60cdff; --text-primary: #ffffff; --r-md: 8px; --ease: cubic-bezier(0.1, 0.9, 0.2, 1);
+            /* Fluent Design System Colors (Dark) */
+            --bg-base: #202020;
+            --surface-card: rgba(45, 45, 45, 0.6);
+            --surface-flyout: #2c2c2c;
+            --surface-stroke: rgba(255, 255, 255, 0.08);
+            --accent-default: #60cdff;
+            --accent-hover: #7aceff;
+            --accent-pressed: #52b2dd;
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255, 255, 255, 0.7);
+            --text-tertiary: rgba(255, 255, 255, 0.5);
+            
+            /* Motion */
+            --ease-fluent: cubic-bezier(0.1, 0.9, 0.2, 1);
+            --duration: 400ms;
+            
+            /* Shapes */
+            --r-sm: 4px; --r-md: 8px; --r-lg: 12px; --r-xl: 18px;
         }
-        * { box-sizing: border-box; outline: none; }
-        body { margin: 0; font-family: "Segoe UI Variable", sans-serif; background-color: var(--bg-base); color: var(--text-primary); min-height: 100vh; display: flex; flex-direction: column; overflow-x: hidden; }
 
-        #bg-layer { position: fixed; inset:0; z-index: -2; background-size: cover; background-position: center; opacity: 0; transition: opacity 1.5s; }
-        #bg-overlay { position: fixed; inset:0; z-index: -1; background: linear-gradient(to bottom, rgba(20,20,20,0.6), rgba(20,20,20,0.85)); backdrop-filter: blur(5px); }
-
-        header { position: fixed; top: 0; width: 100%; height: 60px; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; background: rgba(32, 32, 32, 0.4); backdrop-filter: blur(20px); border-bottom: 1px solid var(--border-color); z-index: 100; }
-        .brand { font-weight: 600; font-size: 18px; display: flex; gap: 12px; color: #fff; }
-        .brand svg { color: var(--accent); }
+        * { box-sizing: border-box; outline: none; -webkit-tap-highlight-color: transparent; }
         
-        /* 设置按钮 */
-        .settings-btn { background: transparent; border: none; color: #fff; cursor: pointer; padding: 8px; border-radius: 4px; transition: 0.2s; position: relative; }
-        .settings-btn:hover { background: rgba(255,255,255,0.1); }
-        .settings-dot { position: absolute; top: 6px; right: 6px; width: 8px; height: 8px; background: var(--accent); border-radius: 50%; display: none; }
+        body {
+            margin: 0;
+            font-family: "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-base);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex; flex-direction: column; overflow-x: hidden;
+            /* Mica Alt Effect */
+            background-image: 
+                radial-gradient(circle at 0% 0%, rgba(96, 205, 255, 0.05), transparent 50%),
+                radial-gradient(circle at 100% 100%, rgba(100, 50, 200, 0.05), transparent 50%);
+            background-attachment: fixed;
+        }
 
-        main { flex: 1; width: 100%; max-width: 900px; margin: 100px auto 40px; padding: 0 20px; }
-        .hero-text { text-align: center; margin-bottom: 30px; }
-        .search-container { position: relative; background: var(--surface-layer); border: 1px solid var(--border-color); border-radius: 30px; padding: 4px; display: flex; box-shadow: 0 8px 32px rgba(0,0,0,0.3); backdrop-filter: blur(20px); }
-        .search-container:focus-within { background: rgba(40,40,40,0.8); border-color: rgba(96,205,255,0.5); }
-        input { flex: 1; background: transparent; border: none; color: #fff; padding: 12px 16px; font-size: 16px; }
-        .action-btn { width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--border-color); background: rgba(255,255,255,0.1); color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; margin-right: 4px; transition: 0.2s; }
-        .action-btn:hover { background: var(--accent); color: #000; }
+        /* --- Dynamic Background --- */
+        #bg-layer { position: fixed; inset:0; z-index: -2; background-size: cover; background-position: center; opacity: 0; transition: opacity 1.5s ease-out; filter: saturate(1.1); }
+        #bg-overlay { position: fixed; inset:0; z-index: -1; background: linear-gradient(180deg, rgba(32,32,32,0.7) 0%, rgba(32,32,32,0.9) 100%); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
 
-        .toolbar { display: flex; justify-content: space-between; align-items: center; margin-top: 30px; opacity: 0; pointer-events: none; transition: 0.3s; flex-wrap: wrap; gap: 10px; }
-        .toolbar.active { opacity: 1; pointer-events: auto; }
-        .info-tag { font-size: 0.9rem; background: rgba(0,0,0,0.3); padding: 6px 12px; border-radius: 6px; }
-        .btn-group { display: flex; gap: 10px; }
-        .tool-btn { background: rgba(255,255,255,0.1); border: 1px solid var(--border-color); color: var(--accent); padding: 8px 16px; border-radius: 20px; cursor: pointer; display: flex; align-items: center; gap: 8px; font-weight: 600; transition: 0.2s; font-size: 0.9rem; }
-        .tool-btn:hover { background: rgba(96,205,255,0.2); }
-        .tool-btn:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(1); }
-
-        .gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; margin-top: 20px; }
-        .gallery-grid .card-item { background: var(--surface-layer); border: 1px solid var(--border-color); border-radius: var(--r-md); overflow: hidden; position: relative; cursor: zoom-in; animation: slideUp 0.6s var(--ease) forwards; backdrop-filter: blur(10px); }
-        .gallery-grid .card-img-wrapper { padding-bottom: 140%; position: relative; background: rgba(0,0,0,0.2); }
-        .gallery-grid img { position: absolute; top:0; left:0; width:100%; height:100%; object-fit: cover; }
-
-        .gallery-single { display: flex; justify-content: center; margin-top: 20px; }
-        .gallery-single .card-item { width: auto; max-width: 100%; background: var(--surface-layer); border: 1px solid var(--border-color); border-radius: var(--r-md); overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.5); animation: slideUp 0.6s forwards; display: inline-flex; flex-direction: column; position: relative; }
+        /* --- Header --- */
+        header {
+            position: fixed; top: 0; width: 100%; height: 64px;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0 24px; z-index: 100;
+            background: rgba(32, 32, 32, 0.6);
+            backdrop-filter: blur(30px);
+            border-bottom: 1px solid var(--surface-stroke);
+            transition: transform 0.3s var(--ease-fluent);
+        }
         
-        .player-wrapper { position: relative; display: flex; justify-content: center; background: #000; min-width: 300px; min-height: 300px; }
-        .player-wrapper img, .player-wrapper canvas { display: block; max-height: 75vh; max-width: 100%; width: auto; object-fit: contain; }
-        .player-wrapper canvas { display: none; } 
-        .play-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.3); cursor: pointer; z-index: 10; }
-        .play-btn { width: 80px; height: 80px; background: rgba(255,255,255,0.2); backdrop-filter: blur(10px); border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid rgba(255,255,255,0.5); }
-        .play-btn svg { width: 40px; height: 40px; fill: white; margin-left: 5px; }
+        .brand { font-weight: 600; font-size: 1.1rem; display: flex; align-items: center; gap: 10px; user-select: none; }
+        .brand svg { color: var(--accent-default); filter: drop-shadow(0 0 8px rgba(96,205,255,0.4)); }
+        
+        .header-actions { display: flex; gap: 8px; }
+        .icon-btn {
+            background: transparent; border: none; color: var(--text-secondary);
+            width: 36px; height: 36px; border-radius: var(--r-md);
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; transition: 0.2s; position: relative;
+        }
+        .icon-btn:hover { background: rgba(255,255,255,0.08); color: var(--text-primary); }
+        .icon-btn:active { transform: scale(0.95); }
+        .status-dot { position: absolute; top: 6px; right: 6px; width: 6px; height: 6px; background: var(--accent-default); border-radius: 50%; display: none; box-shadow: 0 0 5px var(--accent-default); }
 
-        .progress-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.8); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 20; color: #fff; display: none; backdrop-filter: blur(5px); }
-        .progress-bar-container { width: 80%; max-width: 300px; height: 6px; background: rgba(255,255,255,0.2); border-radius: 3px; margin-top: 15px; overflow: hidden; }
-        .progress-fill { height: 100%; background: var(--accent); width: 0%; transition: width 0.1s linear; }
-        .spinner { width: 40px; height: 40px; border: 4px solid rgba(255,255,255,0.3); border-top-color: var(--accent); border-radius: 50%; animation: spin 1s linear infinite; }
+        /* --- Main Layout --- */
+        main { flex: 1; width: 100%; max-width: 860px; margin: 100px auto 40px; padding: 0 20px; display: flex; flex-direction: column; }
 
-        /* Modal Styles */
-        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(5px); z-index: 2000; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: 0.2s; }
-        .modal-overlay.open { opacity: 1; pointer-events: auto; }
-        .modal { background: #2b2b2b; width: 90%; max-width: 500px; border-radius: 12px; border: 1px solid var(--border-color); padding: 24px; box-shadow: 0 20px 40px rgba(0,0,0,0.5); transform: scale(0.95); transition: 0.2s; }
-        .modal-overlay.open .modal { transform: scale(1); }
-        .modal h2 { margin: 0 0 16px; font-size: 1.2rem; }
-        .modal textarea { width: 100%; height: 150px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: #fff; border-radius: 8px; padding: 12px; font-family: monospace; font-size: 0.85rem; resize: vertical; margin-bottom: 16px; }
-        .modal-actions { display: flex; justify-content: flex-end; gap: 12px; }
+        .hero-section { text-align: center; margin-bottom: 40px; animation: fadeIn 0.8s var(--ease-fluent); }
+        .hero-section h1 { font-size: 2.8rem; margin: 0; background: linear-gradient(135deg, #fff 0%, #aaa 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .hero-section p { color: var(--text-tertiary); margin-top: 8px; font-size: 1.05rem; }
 
-        @keyframes spin { to { transform: rotate(360deg); } }
-        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-        .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(20px); background: rgba(30,30,30,0.95); border: 1px solid var(--border-color); padding: 10px 20px; border-radius: 20px; opacity: 0; transition: 0.3s; z-index: 3000; pointer-events: none; }
+        /* --- Input Area --- */
+        .input-wrapper {
+            position: relative;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--surface-stroke);
+            border-radius: 32px; /* Pill shape */
+            padding: 4px;
+            display: flex; align-items: center;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+            backdrop-filter: blur(10px);
+            transition: 0.3s var(--ease-fluent);
+            animation: scaleIn 0.6s var(--ease-fluent) 0.1s backwards;
+        }
+        .input-wrapper:focus-within {
+            background: rgba(0,0,0,0.5);
+            border-color: rgba(96,205,255,0.5);
+            box-shadow: 0 12px 48px rgba(0,0,0,0.4);
+            transform: translateY(-2px);
+        }
+        .input-wrapper input {
+            flex: 1; background: transparent; border: none; color: #fff;
+            padding: 14px 20px; font-size: 1rem; font-family: inherit;
+        }
+        .input-wrapper input::placeholder { color: var(--text-tertiary); }
+        
+        .paste-btn {
+            background: transparent; border: none; color: var(--text-tertiary);
+            padding: 8px; cursor: pointer; border-radius: 50%; margin-right: 4px;
+            transition: 0.2s; display: none; /* JS will show this if supported */
+        }
+        .paste-btn:hover { color: var(--text-primary); background: rgba(255,255,255,0.1); }
+        
+        .go-btn {
+            width: 44px; height: 44px; border-radius: 50%; border: none;
+            background: var(--surface-stroke); color: #fff;
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            transition: 0.2s; margin-right: 2px;
+        }
+        .go-btn:hover { background: var(--accent-default); color: #000; box-shadow: 0 0 15px rgba(96,205,255,0.3); }
+
+        /* --- Toolbar & Info --- */
+        .toolbar {
+            display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;
+            margin-top: 30px; opacity: 0; transform: translateY(10px); pointer-events: none;
+            transition: 0.4s var(--ease-fluent);
+        }
+        .toolbar.active { opacity: 1; transform: translateY(0); pointer-events: auto; }
+        
+        .info-chip {
+            font-size: 0.9rem; color: var(--text-secondary);
+            background: rgba(255,255,255,0.06); padding: 8px 16px; border-radius: 20px;
+            border: 1px solid var(--surface-stroke); backdrop-filter: blur(10px);
+        }
+
+        .action-group { display: flex; gap: 10px; }
+        .pill-btn {
+            background: rgba(255,255,255,0.06); border: 1px solid var(--surface-stroke);
+            color: var(--accent-default); padding: 8px 20px; border-radius: 20px;
+            font-size: 0.9rem; font-weight: 600; cursor: pointer;
+            display: flex; align-items: center; gap: 8px; transition: 0.2s;
+        }
+        .pill-btn:hover { background: rgba(96,205,255,0.15); border-color: rgba(96,205,255,0.3); }
+        .pill-btn:disabled { opacity: 0.5; filter: grayscale(1); cursor: not-allowed; }
+
+        /* --- Gallery Grid --- */
+        .gallery-container { margin-top: 24px; }
+        
+        /* Multi-image Grid */
+        .grid-view {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px;
+        }
+        .grid-item {
+            background: var(--surface-card); border: 1px solid var(--surface-stroke);
+            border-radius: var(--r-lg); overflow: hidden; position: relative;
+            aspect-ratio: 1 / 1; opacity: 0; cursor: zoom-in;
+            animation: slideUp 0.5s var(--ease-fluent) forwards;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .grid-item:hover { transform: translateY(-4px); box-shadow: 0 10px 30px rgba(0,0,0,0.3); border-color: rgba(255,255,255,0.2); }
+        .grid-item img { width: 100%; height: 100%; object-fit: cover; }
+
+        /* Single/Player View */
+        .single-view { display: flex; justify-content: center; width: 100%; }
+        .single-card {
+            background: var(--surface-card); border: 1px solid var(--surface-stroke);
+            border-radius: var(--r-xl); overflow: hidden;
+            box-shadow: 0 24px 60px rgba(0,0,0,0.4);
+            animation: scaleIn 0.5s var(--ease-fluent) forwards;
+            position: relative; max-width: 100%;
+        }
+        .single-card img, .single-card canvas {
+            display: block; max-height: 75vh; max-width: 100%; width: auto; object-fit: contain;
+        }
+        
+        /* Player Controls */
+        .play-overlay {
+            position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+            background: rgba(0,0,0,0.2); transition: 0.3s; cursor: pointer;
+        }
+        .play-overlay:hover { background: rgba(0,0,0,0.4); }
+        .play-btn-circle {
+            width: 72px; height: 72px; border-radius: 50%;
+            background: rgba(255,255,255,0.15); backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.3);
+            display: flex; align-items: center; justify-content: center;
+            transition: 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .play-overlay:hover .play-btn-circle { transform: scale(1.1); background: var(--accent-default); border-color: transparent; }
+        .play-btn-circle svg { width: 32px; height: 32px; fill: #fff; margin-left: 4px; transition: 0.3s; }
+        .play-overlay:hover .play-btn-circle svg { fill: #000; }
+
+        /* Progress/Loading Overlay */
+        .loading-layer {
+            position: absolute; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(10px);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 10; opacity: 0; pointer-events: none; transition: 0.3s;
+        }
+        .loading-layer.active { opacity: 1; pointer-events: auto; }
+        .progress-bar { width: 200px; height: 4px; background: rgba(255,255,255,0.2); border-radius: 2px; margin-top: 16px; overflow: hidden; }
+        .progress-fill { height: 100%; width: 0%; background: var(--accent-default); transition: width 0.1s linear; }
+
+        /* --- Modals (Dialogs) --- */
+        .dialog-backdrop {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(5px);
+            z-index: 2000; display: flex; align-items: center; justify-content: center;
+            opacity: 0; pointer-events: none; transition: 0.3s;
+        }
+        .dialog-backdrop.open { opacity: 1; pointer-events: auto; }
+        
+        .dialog-card {
+            background: var(--surface-flyout); border: 1px solid var(--surface-stroke);
+            width: 90%; max-width: 480px; border-radius: var(--r-xl);
+            padding: 24px; box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+            transform: scale(0.95) translateY(10px); transition: 0.3s var(--ease-fluent);
+        }
+        .dialog-backdrop.open .dialog-card { transform: scale(1) translateY(0); }
+        
+        .dialog-header { font-size: 1.25rem; font-weight: 600; margin-bottom: 16px; }
+        .dialog-body { font-size: 0.95rem; color: var(--text-secondary); line-height: 1.6; max-height: 60vh; overflow-y: auto; }
+        .dialog-footer { margin-top: 24px; display: flex; justify-content: flex-end; gap: 12px; }
+        
+        .dialog-btn {
+            background: rgba(255,255,255,0.06); border: 1px solid var(--surface-stroke);
+            color: #fff; padding: 8px 20px; border-radius: var(--r-md); cursor: pointer; transition: 0.2s;
+        }
+        .dialog-btn:hover { background: rgba(255,255,255,0.12); }
+        .dialog-btn.primary { background: var(--accent-default); color: #000; border: none; }
+        .dialog-btn.primary:hover { background: var(--accent-hover); }
+
+        textarea.code-input {
+            width: 100%; height: 120px; background: rgba(0,0,0,0.3); border: 1px solid var(--surface-stroke);
+            border-radius: var(--r-md); color: #fff; padding: 12px; font-family: monospace; font-size: 0.85rem;
+            resize: vertical; margin-top: 10px;
+        }
+        textarea.code-input:focus { border-color: var(--accent-default); }
+
+        /* --- Toast --- */
+        .toast {
+            position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%) translateY(20px);
+            background: #333; border: 1px solid var(--surface-stroke);
+            padding: 10px 24px; border-radius: 24px; font-size: 0.95rem;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+            opacity: 0; pointer-events: none; transition: 0.4s var(--ease-fluent); z-index: 3000;
+            display: flex; align-items: center; gap: 8px;
+        }
         .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+        /* Animations */
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes scaleIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
     </style>
 </head>
 <body>
 
+    <!-- Background Layers -->
     <div id="bg-layer"></div>
     <div id="bg-overlay"></div>
 
+    <!-- Navigation -->
     <header>
         <div class="brand">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                <polyline points="21 15 16 10 5 21"></polyline>
+            </svg>
             Pixiv Proxy
         </div>
-        <button class="settings-btn" onclick="openSettings()" title="设置 Cookie">
-            <div class="settings-dot" id="cookieDot"></div>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-        </button>
+        <div class="header-actions">
+            <button class="icon-btn" onclick="openModal('aboutModal')" title="关于本项目">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+            </button>
+            <button class="icon-btn" onclick="openModal('settingsModal')" title="设置 Cookie">
+                <div class="status-dot" id="cookieStatus"></div>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 1 0 10 10 4 4 0 0 1-5-5 4 4 0 0 1-5-5"></path><path d="M8.5 8.5v.01"></path><path d="M16 15.5v.01"></path><path d="M12 12v.01"></path><path d="M11 17v.01"></path><path d="M7 14v.01"></path></svg>
+            </button>
+            <a href="https://github.com/v0/pixiv-proxy-ex" target="_blank" class="icon-btn" title="GitHub">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg>
+            </a>
+        </div>
     </header>
 
-    <!-- Cookie Modal -->
-    <div class="modal-overlay" id="settingsModal">
-        <div class="modal">
-            <h2>设置自定义 Cookie</h2>
-            <p style="color:#aaa;font-size:0.9rem;margin-bottom:10px;">粘贴完整的 Pixiv Cookie 以解锁 R-18 内容。如果不填则使用服务器默认配置。</p>
-            <textarea id="cookieInput" placeholder="first_visit_datetime_pc=...; PHPSESSID=..."></textarea>
-            <div class="modal-actions">
-                <button class="tool-btn" style="border:none" onclick="closeSettings()">取消</button>
-                <button class="tool-btn" style="background:var(--accent);color:#000;border:none" onclick="saveCookie()">保存</button>
+    <!-- Main Content -->
+    <main>
+        <section class="hero-section">
+            <h1>Pixiv 极速预览</h1>
+            <p>支持 R-18 · 动图 Ugoira · 原图 ZIP 打包 · CDN 加速</p>
+        </section>
+
+        <section class="input-wrapper">
+            <input type="text" id="inputUrl" placeholder="粘贴 Pixiv 链接或 ID (如 134798225)" autocomplete="off">
+            <button class="paste-btn" id="pasteBtn" title="粘贴">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
+            </button>
+            <button class="go-btn" id="goBtn">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+            </button>
+        </section>
+
+        <section class="toolbar" id="toolbar">
+            <div class="info-chip" id="countInfo">等待输入...</div>
+            <div class="action-group">
+                <button class="pill-btn" id="gifBtn" style="display:none" onclick="convertToGif()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><path d="M12 8v8"></path><path d="M16 8v8"></path><path d="M8 8v8"></path></svg> 导出 GIF
+                </button>
+                <button class="pill-btn" id="dlBtn" onclick="downloadHandler()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg> 下载 ZIP
+                </button>
+            </div>
+        </section>
+
+        <section class="gallery-container" id="gallery">
+            <!-- Content Injected Here -->
+        </section>
+    </main>
+
+    <!-- Modals -->
+    
+    <!-- 1. Settings Modal -->
+    <div class="dialog-backdrop" id="settingsModal" onclick="if(event.target===this)closeModal('settingsModal')">
+        <div class="dialog-card">
+            <div class="dialog-header">自定义 Cookie</div>
+            <div class="dialog-body">
+                <p>如需访问 R-18 内容，请在此填入已登录 Pixiv 账号的完整 Cookie。所有数据仅保存在您的浏览器本地。</p>
+                <textarea class="code-input" id="cookieInput" placeholder="first_visit_datetime_pc=...; PHPSESSID=..."></textarea>
+            </div>
+            <div class="dialog-footer">
+                <button class="dialog-btn" onclick="closeModal('settingsModal')">取消</button>
+                <button class="dialog-btn primary" onclick="saveCookie()">保存配置</button>
             </div>
         </div>
     </div>
 
-    <main>
-        <div class="hero-text"><h1>Pixiv 极速预览</h1></div>
-        <div class="search-container">
-            <input type="text" id="inputUrl" placeholder="粘贴 Pixiv 作品链接或 ID..." autocomplete="off">
-            <button class="action-btn" id="goBtn">➜</button>
-        </div>
-
-        <div class="toolbar" id="toolbar">
-            <div class="info-tag" id="countInfo">等待输入...</div>
-            <div class="btn-group">
-                <button class="tool-btn" id="gifBtn" style="display:none" onclick="convertToGif()">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><path d="M12 8v8"></path><path d="M16 8v8"></path><path d="M8 8v8"></path></svg> <span>导出 GIF</span>
-                </button>
-                <button class="tool-btn" id="dlBtn" onclick="downloadHandler()">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg> <span>下载 ZIP</span>
-                </button>
+    <!-- 2. About Modal -->
+    <div class="dialog-backdrop" id="aboutModal" onclick="if(event.target===this)closeModal('aboutModal')">
+        <div class="dialog-card">
+            <div class="dialog-header">关于 & 免责声明</div>
+            <div class="dialog-body">
+                <p><strong>Pixiv Proxy (Vercel Edge Edition)</strong><br>
+                一个基于 Serverless 技术的 Pixiv 图片反向代理与预览工具。支持突破 4.5MB 限制的大文件代理，支持动图实时解码与 GIF 转换。</p>
+                
+                <hr style="border:0; border-top:1px solid var(--surface-stroke); margin:15px 0;">
+                
+                <p style="font-size:0.85rem; color:#aaa;">
+                <strong>⚠️ 免责声明：</strong><br>
+                1. 本项目仅供学习与技术交流使用，不存储任何图片数据。<br>
+                2. 本服务不隶属于 Pixiv Inc.<br>
+                3. 使用本服务访问的内容版权归原作者所有。<br>
+                4. 请勿将本服务用于商业用途或大规模爬虫采集。<br>
+                5. 用户需自行承担配置自定义 Cookie 所带来的账号风险。
+                </p>
+            </div>
+            <div class="dialog-footer">
+                <button class="dialog-btn primary" onclick="closeModal('aboutModal')">我已知晓</button>
             </div>
         </div>
-        <div id="gallery"></div>
-    </main>
-    <div class="toast" id="toast">提示消息</div>
+    </div>
 
+    <div class="toast" id="toast">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+        <span id="toastMsg">提示消息</span>
+    </div>
+
+    <!-- Logic -->
     <script>
+        // --- Init & Background ---
         (function(){
-            const bg = document.getElementById('bg-layer'); const img = new Image();
-            img.src = `https://t.alcy.cc/moez?t=${Date.now()}`; img.onload = () => { bg.style.backgroundImage = `url('${img.src}')`; bg.style.opacity = 1; };
-            // Init Cookie State
-            if(localStorage.getItem('user_cookie')) document.getElementById('cookieDot').style.display='block';
+            // Random Background
+            const bg = document.getElementById('bg-layer');
+            const img = new Image();
+            img.src = `https://t.alcy.cc/moez?t=${Date.now()}`;
+            img.onload = () => { bg.style.backgroundImage = `url('${img.src}')`; bg.style.opacity = 1; };
+            
+            // Cookie Status Check
+            if(localStorage.getItem('user_cookie')) document.getElementById('cookieStatus').style.display = 'block';
+            
+            // Clipboard API Support Check
+            if (navigator.clipboard && navigator.clipboard.readText) {
+                document.getElementById('pasteBtn').style.display = 'block';
+            }
         })();
 
-        let currentData = null; let framesCache = null;
+        let currentData = null;
+        let framesCache = null;
 
-        // --- Settings Logic ---
-        function openSettings() {
-            document.getElementById('cookieInput').value = localStorage.getItem('user_cookie') || '';
-            document.getElementById('settingsModal').classList.add('open');
-        }
-        function closeSettings() { document.getElementById('settingsModal').classList.remove('open'); }
-        function saveCookie() {
-            const val = document.getElementById('cookieInput').value.trim();
-            if(val) {
-                localStorage.setItem('user_cookie', val);
-                document.getElementById('cookieDot').style.display = 'block';
-                showToast('✅ Cookie 已保存，下次请求生效');
-            } else {
-                localStorage.removeItem('user_cookie');
-                document.getElementById('cookieDot').style.display = 'none';
-                showToast('🗑️ 自定义 Cookie 已清除');
-            }
-            closeSettings();
-        }
-
-        // --- Main Logic ---
+        // --- UX Interaction ---
         const input = document.getElementById('inputUrl');
         const gallery = document.getElementById('gallery');
         const toolbar = document.getElementById('toolbar');
         const gifBtn = document.getElementById('gifBtn');
+
         document.getElementById('goBtn').onclick = processInput;
         input.onkeypress = (e) => e.key === 'Enter' && processInput();
+        
+        document.getElementById('pasteBtn').onclick = async () => {
+            try {
+                const text = await navigator.clipboard.readText();
+                input.value = text;
+                processInput();
+            } catch(e) { showToast('无法读取剪贴板'); }
+        };
 
+        // --- Core Logic: Process Input ---
         async function processInput() {
             const raw = input.value.trim();
             if(!raw) return;
-            gallery.innerHTML = '<div style="text-align:center;margin-top:20px;color:#aaa;">正在解析...</div>';
-            toolbar.classList.remove('active'); gifBtn.style.display = 'none';
-            currentData = null; framesCache = null;
+
+            // Reset UI
+            gallery.innerHTML = '<div style="text-align:center;margin-top:40px;color:var(--text-tertiary);">正在分析作品数据...</div>';
+            toolbar.classList.remove('active');
+            gifBtn.style.display = 'none';
+            currentData = null;
+            framesCache = null;
 
             try {
                 let id = raw;
                 const match = raw.match(/(?:artworks\/|illust_id=)(\d+)/);
                 if(match) id = match[1];
-                else if(raw.includes('pximg.net')) { renderDirectImage(raw); return; }
+                else if(raw.includes('pximg.net')) {
+                    renderDirectImage(raw);
+                    return;
+                }
 
-                // 🟢 核心：请求时带上自定义 Header
+                // Prepare Headers (Cookie Injection)
                 const headers = {};
                 const userCookie = localStorage.getItem('user_cookie');
                 if(userCookie) headers['x-user-cookie'] = userCookie;
 
+                // API Request
                 const res = await fetch(`/analyze/${id}`, { headers });
                 const data = await res.json();
+                
                 if(data.error) throw new Error(data.error);
                 
                 currentData = data;
                 renderContent(data);
+
             } catch (err) {
                 console.error(err);
-                gallery.innerHTML = `<div style="text-align:center;color:#ff99a4;">❌ ${err.message || '解析失败'}</div>`;
+                gallery.innerHTML = `<div style="text-align:center;margin-top:40px;color:#ff99a4;">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom:10px;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                    <br>${err.message || '解析失败，请检查链接或 Cookie'}
+                </div>`;
             }
         }
 
+        // --- Render Logic ---
         function renderContent(data) {
-            gallery.innerHTML = ''; gallery.className = ''; toolbar.classList.add('active');
+            gallery.innerHTML = '';
+            toolbar.classList.add('active');
             const title = data.title || '无标题';
-            
+
             if (data.isUgoira) {
-                document.getElementById('countInfo').innerText = `🎬 动图 | ${title}`;
-                gifBtn.style.display = 'flex'; gallery.classList.add('gallery-single');
-                const coverUrl = getProxyUrl(data.cover);
+                // Ugoira Mode
+                document.getElementById('countInfo').innerText = `🎬 动图 Ugoira | ${title}`;
+                gifBtn.style.display = 'flex';
                 
                 gallery.innerHTML = `
-                    <div class="card-item">
-                        <div class="player-wrapper" id="playerContainer">
-                            <img src="${coverUrl}" id="ugoiraCover">
-                            <canvas id="ugoiraCanvas"></canvas>
-                            <div class="play-overlay" id="playBtn" onclick="playUgoira()"><div class="play-btn"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"></path></svg></div></div>
-                            <div class="progress-overlay" id="progressOverlay">
-                                <div class="spinner" id="progressSpinner"></div>
-                                <div class="progress-bar-container" id="progressBarBox" style="display:none"><div class="progress-fill" id="progressFill"></div></div>
-                                <div class="progress-text" id="progressText">准备中...</div>
+                <div class="single-view">
+                    <div class="single-card">
+                        <img src="${getProxyUrl(data.cover)}" id="ugoiraCover">
+                        <canvas id="ugoiraCanvas" style="display:none"></canvas>
+                        
+                        <div class="play-overlay" id="playBtn" onclick="playUgoira()">
+                            <div class="play-btn-circle">
+                                <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"></path></svg>
                             </div>
                         </div>
-                    </div>`;
+                        
+                        <div class="loading-layer" id="loader">
+                            <div class="spinner"></div>
+                            <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+                            <div style="margin-top:8px;font-size:0.9rem;" id="progressText">准备中...</div>
+                        </div>
+                    </div>
+                </div>`;
+                
             } else {
+                // Image Mode
                 const images = data.images;
-                document.getElementById('countInfo').innerText = `🖼️ ${images.length}P | ${title}`;
+                const r18Label = data.isR18 ? '<span style="color:#ff6b6b;font-weight:bold;margin-right:5px;">R-18</span>' : '';
+                document.getElementById('countInfo').innerHTML = `${r18Label}🖼️ ${images.length}P | ${title}`;
+                
                 if (images.length === 1) {
-                    gallery.classList.add('gallery-single');
-                    const url = getProxyUrl(images[0]);
-                    gallery.innerHTML = `<div class="card-item"><div class="player-wrapper"><img src="${url}"></div></div>`;
+                    gallery.innerHTML = `
+                    <div class="single-view">
+                        <div class="single-card">
+                            <img src="${getProxyUrl(images[0])}">
+                        </div>
+                    </div>`;
                 } else {
-                    gallery.classList.add('gallery-grid');
+                    gallery.className = 'gallery-container grid-view';
+                    let html = '';
                     images.forEach((url, idx) => {
-                        gallery.innerHTML += `<div class="card-item" style="animation-delay:${idx*50}ms"><div class="card-img-wrapper"><img src="${getProxyUrl(url)}" loading="lazy"></div></div>`;
+                        html += `<div class="grid-item" style="animation-delay:${idx * 50}ms">
+                            <a href="${getProxyUrl(url)}" target="_blank"><img src="${getProxyUrl(url)}" loading="lazy"></a>
+                        </div>`;
                     });
+                    gallery.innerHTML = html;
                 }
             }
         }
 
+        // --- Ugoira & GIF Functions ---
+        
         async function fetchAndUnzipUgoira(onProgress) {
             if (framesCache) return framesCache;
+            
             const zipUrl = getProxyUrl(currentData.original);
             const response = await fetch(zipUrl);
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            if (!response.ok) throw new Error(`HTTP Error ${response.status}`);
+            
             const contentLength = +response.headers.get('Content-Length');
             const reader = response.body.getReader();
-            let receivedLength = 0; let chunks = [];
+            let receivedLength = 0; 
+            let chunks = [];
+            
             while(true) {
                 const {done, value} = await reader.read();
                 if (done) break;
-                chunks.push(value); receivedLength += value.length;
+                chunks.push(value);
+                receivedLength += value.length;
                 if(contentLength) onProgress(receivedLength / contentLength, 'download');
             }
+            
             onProgress(1, 'unzip');
             const blob = new Blob(chunks);
             const zip = await JSZip.loadAsync(blob);
             const frames = [];
+            
             for (let i = 0; i < currentData.frames.length; i++) {
                 const f = currentData.frames[i];
                 const base64 = await zip.file(f.file).async('base64');
-                const img = new Image(); img.src = "data:image/jpeg;base64," + base64;
+                const img = new Image();
+                img.src = "data:image/jpeg;base64," + base64;
                 await new Promise(r => img.onload = r);
                 frames.push({ img, delay: f.delay });
             }
-            framesCache = frames; return frames;
+            framesCache = frames;
+            return frames;
         }
 
         async function playUgoira() {
-            if (!currentData.isUgoira) return;
-            updateUIState('loading', '加载资源中...');
+            if (!currentData || !currentData.isUgoira) return;
+            
+            const loader = document.getElementById('loader');
+            const fill = document.getElementById('progressFill');
+            const txt = document.getElementById('progressText');
+            
+            loader.classList.add('active');
+            txt.innerText = '正在下载资源...';
+            
             try {
                 const frames = await fetchAndUnzipUgoira((pct, stage) => {
-                    updateUIState(stage==='download'?'progress':'loading', stage==='download'?`下载中 ${Math.round(pct*100)}%`:'正在解码...', pct);
+                    if(stage === 'download') {
+                        fill.style.width = `${pct * 100}%`;
+                    } else {
+                        txt.innerText = '正在解码帧...';
+                    }
                 });
-                const canvas = document.getElementById('ugoiraCanvas'); const ctx = canvas.getContext('2d');
-                canvas.width = frames[0].img.width; canvas.height = frames[0].img.height;
-                document.getElementById('ugoiraCover').style.display='none'; document.getElementById('playBtn').style.display='none'; canvas.style.display='block'; updateUIState('hide');
-                let idx = 0;
-                function loop() { ctx.drawImage(frames[idx].img,0,0); idx=(idx+1)%frames.length; setTimeout(()=>requestAnimationFrame(loop), frames[idx].delay); }
-                loop();
-            } catch (e) { console.error(e); showToast('播放失败'); updateUIState('hide'); }
-        }
 
+                const canvas = document.getElementById('ugoiraCanvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = frames[0].img.width;
+                canvas.height = frames[0].img.height;
+                
+                // Switch View
+                document.getElementById('ugoiraCover').style.display = 'none';
+                document.getElementById('playBtn').style.display = 'none';
+                canvas.style.display = 'block';
+                loader.classList.remove('active');
+                
+                let idx = 0;
+                function loop() {
+                    ctx.drawImage(frames[idx].img, 0, 0);
+                    idx = (idx + 1) % frames.length;
+                    setTimeout(() => requestAnimationFrame(loop), frames[idx].delay);
+                }
+                loop();
+
+            } catch (e) {
+                console.error(e);
+                showToast('播放失败: ' + e.message);
+                loader.classList.remove('active');
+            }
+        }
+        
         async function convertToGif() {
             if (!currentData.isUgoira) return;
             gifBtn.disabled = true;
+            
+            const loader = document.getElementById('loader');
+            const fill = document.getElementById('progressFill');
+            const txt = document.getElementById('progressText');
+            // Re-use loader UI if visible, or show toast if player already running
+            const useOverlay = document.getElementById('playBtn').style.display !== 'none';
+            if(useOverlay) loader.classList.add('active');
+            
             try {
-                updateUIState('loading', '准备资源...');
+                if(useOverlay) txt.innerText = '检查资源...';
+                
                 const frames = await fetchAndUnzipUgoira((pct, stage) => {
-                    updateUIState(stage==='download'?'progress':'loading', stage==='download'?`下载素材 ${Math.round(pct*100)}%`:'解码中...', pct);
+                    if(useOverlay && stage === 'download') fill.style.width = `${pct * 100}%`;
                 });
-                updateUIState('progress', '初始化 GIF 引擎...', 0);
+                
+                if(useOverlay) txt.innerText = '初始化 GIF 引擎...';
+                
+                // Load Worker Blob
                 const workerBlob = await (await fetch('https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js')).blob();
-                const gif = new GIF({ workers: 2, quality: 10, width: frames[0].img.width, height: frames[0].img.height, workerScript: URL.createObjectURL(workerBlob) });
+                const gif = new GIF({
+                    workers: 2, quality: 10,
+                    width: frames[0].img.width, height: frames[0].img.height,
+                    workerScript: URL.createObjectURL(workerBlob)
+                });
+                
                 frames.forEach(f => gif.addFrame(f.img, {delay: f.delay}));
-                gif.on('progress', p => updateUIState('progress', `渲染中 ${Math.round(p*100)}%`, p));
-                gif.on('finished', blob => { updateUIState('hide'); saveAs(blob, `Pixiv_GIF_${currentData.title}.gif`); showToast('✅ 导出成功'); gifBtn.disabled=false; });
+                
+                gif.on('progress', p => {
+                    const percent = Math.round(p * 100);
+                    if(useOverlay) {
+                        txt.innerText = `渲染中 ${percent}%`;
+                        fill.style.width = `${percent}%`;
+                    } else {
+                        showToast(`GIF 渲染中 ${percent}%`);
+                    }
+                });
+                
+                gif.on('finished', blob => {
+                    if(useOverlay) loader.classList.remove('active');
+                    saveAs(blob, `Pixiv_GIF_${currentData.title}.gif`);
+                    showToast('✅ GIF 导出成功');
+                    gifBtn.disabled = false;
+                });
+                
                 gif.render();
-            } catch (e) { showToast('失败: '+e.message); updateUIState('hide'); gifBtn.disabled=false; }
+                
+            } catch (e) {
+                showToast('失败: ' + e.message);
+                if(useOverlay) loader.classList.remove('active');
+                gifBtn.disabled = false;
+            }
         }
 
+        // --- Helper Functions ---
         async function downloadHandler() {
             if (!currentData) return;
-            const btn = document.getElementById('dlBtn'); btn.disabled = true;
+            const btn = document.getElementById('dlBtn');
+            btn.disabled = true;
+            showToast('开始下载...');
+            
             try {
                 if (currentData.isUgoira) {
                     const zipUrl = getProxyUrl(currentData.original);
                     const resp = await fetch(zipUrl);
-                    saveAs(await resp.blob(), `Pixiv_Ugoira_${currentData.title}.zip`);
+                    const blob = await resp.blob();
+                    saveAs(blob, `Pixiv_Ugoira_${currentData.title}.zip`);
                 } else {
-                    const zip = new JSZip(); const folder = zip.folder(`pixiv_${Date.now()}`);
-                    await Promise.all(currentData.images.map(async url => folder.file(url.split('/').pop(), await (await fetch(getProxyUrl(url))).blob())));
-                    saveAs(await zip.generateAsync({type:"blob"}), `Pixiv_${currentData.title}.zip`);
+                    const zip = new JSZip();
+                    const folder = zip.folder(`pixiv_${Date.now()}`);
+                    await Promise.all(currentData.images.map(async url => {
+                        const blob = await (await fetch(getProxyUrl(url))).blob();
+                        folder.file(url.split('/').pop(), blob);
+                    }));
+                    const content = await zip.generateAsync({type:"blob"});
+                    saveAs(content, `Pixiv_${currentData.title}.zip`);
                 }
-                showToast('✅ 下载开始');
-            } catch (e) { showToast('❌ 下载失败'); } finally { btn.disabled = false; }
+                showToast('✅ 下载完成');
+            } catch (e) { showToast('❌ 下载失败'); }
+            finally { btn.disabled = false; }
         }
 
         function getProxyUrl(original) {
             if(!original) return '';
             const path = original.split('pximg.net/')[1];
             const url = `${window.location.origin}/${path}`;
-            // 🟢 如果有自定义 Cookie，拼接到 URL 参数里传给 index.js
             const userCookie = localStorage.getItem('user_cookie');
             if (userCookie) {
                 return `${url}?token=${encodeURIComponent(userCookie)}`;
@@ -329,15 +689,39 @@
             return url;
         }
 
-        function renderDirectImage(rawUrl) { gallery.innerHTML = `<div class="gallery-single"><div class="card-item"><div class="player-wrapper"><img src="${getProxyUrl(rawUrl)}"></div></div></div>`; }
-        function showToast(msg) { const t=document.getElementById('toast'); t.innerText=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),3000); }
-        function updateUIState(state, text='', progress=0) {
-            const el = document.getElementById('progressOverlay'); const bar = document.getElementById('progressBarBox');
-            if(state==='hide') { el.style.display='none'; return; }
-            el.style.display='flex'; document.getElementById('progressText').innerText=text;
-            document.getElementById('progressSpinner').style.display = state==='loading'?'block':'none';
-            bar.style.display = state==='progress'?'block':'none';
-            document.getElementById('progressFill').style.width = `${progress*100}%`;
+        function renderDirectImage(rawUrl) {
+            gallery.innerHTML = `<div class="single-view"><div class="single-card"><img src="${getProxyUrl(rawUrl)}"></div></div>`;
+            toolbar.classList.add('active');
+        }
+
+        // --- UI Utilities ---
+        function openModal(id) {
+            if(id === 'settingsModal') {
+                document.getElementById('cookieInput').value = localStorage.getItem('user_cookie') || '';
+            }
+            document.getElementById(id).classList.add('open');
+        }
+        function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+        
+        function saveCookie() {
+            const val = document.getElementById('cookieInput').value.trim();
+            if(val) {
+                localStorage.setItem('user_cookie', val);
+                document.getElementById('cookieStatus').style.display = 'block';
+                showToast('已保存配置');
+            } else {
+                localStorage.removeItem('user_cookie');
+                document.getElementById('cookieStatus').style.display = 'none';
+                showToast('已清除配置');
+            }
+            closeModal('settingsModal');
+        }
+
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            document.getElementById('toastMsg').innerText = msg;
+            t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 3000);
         }
     </script>
 </body>
