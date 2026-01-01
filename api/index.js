@@ -38,7 +38,7 @@ export default async function handler(request) {
     headers['Cookie'] = `PHPSESSID=${process.env.PIXIV_PHPSESSID}`;
   } 
   // 或者直接硬编码测试 (如果环境变量不生效，取消下面这行的注释并填入)
-  // headers['Cookie'] = 'PHPSESSID=你的ID...';
+  headers['Cookie'] = 'first_visit_datetime_pc=2026-01-01%2022%3A11%3A45; PHPSESSID=89665003_TcEEugHTdp444gcCrryrFldbhWsc96n8; cc1=2026-01-01%2022%3A11%3A45; p_ab_id=1; p_ab_id_2=1; p_ab_d_id=459864257; yuid_b=JEEllUQ; _cfuvid=eoC66XMwZS_2.IY81JdeVCeQCVrWz5_NG0pL2h5RUKc-1767275012063-0.0.1.1-604800000; cf_clearance=LisOp5JJTTv08YlpiyhEDN_8aSlPu83qoZpBzP_vDJk-1767282638-1.2.1.1-Hg4jLWfVTYER5DIxAH_YDxbwAZDBsrtNd4XOHsxOAUJNeVIfemzTNtrVv50.qcW7eSdpL1EYwZUIfpJ39xIwzYcTzE6YiqBmnfBbF8kVQdP3aX2wxoVch7JtPHGqVR89m3qEdfUJU6CtEyBQ7GNFZVZnvTl85h5alY.gzKu9ku0CcX7GwDbMPqEt5c0bjb5x_Ek1siz4tt8IiC3Ow2Bc.VpdfFvrVswUNji1qchvBDY; device_token=2d3f3219e676714428d5f36de08a5a38; privacy_policy_agreement=7; c_type=25; privacy_policy_notification=0; a_type=0; b_type=1; mybestpixiv_active_user=1; __cf_bm=LPvl.CcuXM4gi8bQQAMxah5tWKa2ee1Vo7vi44NUROo-1767282565-1.0.1.1-GWeobtSPuNdyQKUVbHA4rYDtGQ7umWWMhZaVpIRuVpTRCLFhn2A3AtZsupuDVUNkydpJgtpWNof09TX1jZWcZXKv1cu2p85cA464UbaNFbrtQdGSNsS.7jYe7PymOvfl';
 
   try {
     const response = await fetch(targetUrl, { 
@@ -74,3 +74,4 @@ export default async function handler(request) {
     return new Response(`Proxy Error: ${err.message}`, { status: 500 });
   }
 }
+
