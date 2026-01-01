@@ -3,495 +3,212 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pixiv 图片反向代理 | Fluent Design</title>
+    <title>Pixiv 图片解析与代理 | Fluent Design</title>
+    <!-- 保持原有的 CSS 样式，下面添加了 .gallery 相关的新样式 -->
     <style>
+        /* --- 粘贴之前的 CSS --- */
         :root {
-            /* Fluent Design Color Palette (Dark Mode) */
             --bg-color: #202020;
-            --mica-bg: #1a1a1a; /* Fallback */
+            --mica-bg: #1a1a1a;
             --surface-color: rgba(32, 32, 32, 0.6);
             --card-bg: rgba(255, 255, 255, 0.05);
             --card-border: rgba(255, 255, 255, 0.08);
             --text-primary: #ffffff;
             --text-secondary: #a0a0a0;
-            --accent-color: #60cdff; /* Windows 11 Blue */
+            --accent-color: #60cdff;
             --accent-hover: #4cc2ff;
-            --danger-color: #ff99a4;
-            --success-color: #6ccb5f;
-            
-            /* Spacing & Radius */
             --radius-sm: 4px;
             --radius-md: 8px;
             --radius-lg: 12px;
-            --radius-xl: 16px;
         }
-
-        /* 模拟 Windows 11 Mica 背景效果 */
         body {
-            margin: 0;
-            font-family: "Segoe UI Variable", "Segoe UI", "Microsoft YaHei", sans-serif;
-            background-color: var(--bg-color);
-            background-image: 
-                radial-gradient(circle at 0% 0%, rgba(96, 205, 255, 0.15), transparent 40%),
-                radial-gradient(circle at 100% 0%, rgba(255, 0, 212, 0.05), transparent 30%),
-                radial-gradient(circle at 100% 100%, rgba(32, 32, 32, 1), transparent 80%);
+            margin: 0; font-family: "Segoe UI Variable", "Segoe UI", sans-serif;
+            background-color: var(--bg-color); color: var(--text-primary);
+            min-height: 100vh; display: flex; flex-direction: column;
+            background-image: radial-gradient(circle at 0% 0%, rgba(96, 205, 255, 0.15), transparent 40%), radial-gradient(circle at 100% 100%, rgba(32, 32, 32, 1), transparent 80%);
             background-attachment: fixed;
-            color: var(--text-primary);
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
         }
-
-        /* 亚克力导航栏 */
         nav {
-            position: sticky;
-            top: 20px;
-            margin: 0 auto;
-            width: 90%;
-            max-width: 1200px;
-            height: 60px;
-            background: rgba(32, 32, 32, 0.7);
-            backdrop-filter: blur(20px) saturate(125%);
-            -webkit-backdrop-filter: blur(20px) saturate(125%);
-            border: 1px solid var(--card-border);
-            border-radius: var(--radius-lg);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 24px;
-            z-index: 100;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            width: 90%; max-width: 1200px; height: 60px; margin: 20px auto;
+            background: rgba(32, 32, 32, 0.7); backdrop-filter: blur(20px);
+            border: 1px solid var(--card-border); border-radius: var(--radius-lg);
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 600; font-size: 1.1rem; z-index: 100;
         }
-
-        .brand {
-            font-weight: 600;
-            font-size: 1.1rem;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        
-        .brand span { color: var(--accent-color); }
-
-        .nav-links a {
-            color: var(--text-secondary);
-            text-decoration: none;
-            margin-left: 20px;
-            font-size: 0.9rem;
-            transition: color 0.2s;
-        }
-        .nav-links a:hover { color: var(--text-primary); }
-        .nav-links a.active { 
-            color: var(--text-primary); 
-            font-weight: 600;
-            position: relative;
-        }
-        .nav-links a.active::after {
-            content: '';
-            position: absolute;
-            bottom: -21px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 16px;
-            height: 3px;
-            background: var(--accent-color);
-            border-radius: 3px 3px 0 0;
-        }
-
-        /* 主容器 */
-        main {
-            width: 90%;
-            max-width: 1000px;
-            margin: 40px auto;
-            flex: 1;
-        }
-
-        /* 英雄区域 (Hero) */
-        .hero {
-            text-align: center;
-            margin-bottom: 60px;
-            animation: fadeIn 0.8s ease-out;
-        }
-        
-        .hero h1 {
-            font-size: 3rem;
-            font-weight: 600;
-            margin-bottom: 10px;
-            background: linear-gradient(135deg, #fff 0%, #a5a5a5 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-        
-        .hero p {
-            color: var(--text-secondary);
-            font-size: 1.1rem;
-            max-width: 600px;
-            margin: 0 auto;
-        }
-
-        /* 工具卡片 */
+        main { width: 90%; max-width: 800px; margin: 40px auto; flex: 1; }
+        .hero { text-align: center; margin-bottom: 40px; }
+        .hero h1 { font-size: 2.5rem; margin-bottom: 10px; background: linear-gradient(135deg, #fff, #a5a5a5); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         .card {
-            background: var(--card-bg);
-            border: 1px solid var(--card-border);
-            border-radius: var(--radius-lg);
-            padding: 24px;
-            margin-bottom: 24px;
+            background: var(--card-bg); border: 1px solid var(--card-border);
+            border-radius: var(--radius-lg); padding: 24px; margin-bottom: 24px;
             backdrop-filter: blur(10px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            transition: transform 0.2s, box-shadow 0.2s;
         }
-        
-        .card:hover {
-            border-color: rgba(255, 255, 255, 0.15);
-            box-shadow: 0 8px 24px rgba(0,0,0,0.2);
-        }
-
-        .card h3 { margin-top: 0; font-weight: 600; }
-
-        /* 输入框区域 */
-        .converter-box {
-            display: flex;
-            gap: 12px;
-            margin-top: 20px;
-            flex-wrap: wrap;
-        }
-
+        .converter-box { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 20px; }
         input[type="text"] {
-            flex: 1;
-            background: rgba(0, 0, 0, 0.3);
-            border: 1px solid var(--card-border);
-            border-bottom: 2px solid rgba(255, 255, 255, 0.3);
-            border-radius: var(--radius-sm);
-            padding: 10px 14px;
-            color: #fff;
-            font-family: inherit;
-            outline: none;
-            transition: all 0.2s;
-            min-width: 200px;
+            flex: 1; background: rgba(0,0,0,0.3); border: 1px solid var(--card-border);
+            border-bottom: 2px solid rgba(255,255,255,0.3); border-radius: var(--radius-sm);
+            padding: 12px; color: #fff; outline: none; transition: 0.2s; min-width: 250px;
         }
-        
-        input[type="text"]:focus {
-            background: rgba(0, 0, 0, 0.5);
-            border-bottom-color: var(--accent-color);
-        }
-
+        input[type="text"]:focus { background: rgba(0,0,0,0.5); border-bottom-color: var(--accent-color); }
         button.fluent-btn {
-            background: var(--accent-color);
-            color: #000;
-            border: none;
-            border-radius: var(--radius-sm);
-            padding: 0 20px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-            height: 42px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            background: var(--accent-color); color: #000; border: none; border-radius: var(--radius-sm);
+            padding: 0 24px; font-weight: 600; cursor: pointer; height: 44px; transition: 0.2s;
         }
+        button.fluent-btn:hover { background: var(--accent-hover); transform: scale(1.02); }
+        button.fluent-btn:disabled { background: #555; cursor: not-allowed; transform: none; }
 
-        button.fluent-btn:hover {
-            background: var(--accent-hover);
-            transform: scale(1.02);
+        /* --- 新增：画廊样式 --- */
+        .gallery { display: grid; gap: 20px; margin-top: 20px; }
+        .img-card {
+            background: rgba(0,0,0,0.2); border-radius: var(--radius-md); overflow: hidden;
+            border: 1px solid var(--card-border); text-align: center;
         }
-        
-        button.fluent-btn:active { transform: scale(0.98); }
+        .img-card img {
+            width: 100%; height: auto; display: block; min-height: 200px; background: #2a2a2a;
+        }
+        .img-actions { padding: 10px; display: flex; justify-content: space-between; gap: 10px; }
+        .url-text {
+            font-family: monospace; font-size: 0.8rem; color: var(--text-secondary);
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        .copy-btn {
+            background: transparent; border: 1px solid var(--card-border); color: var(--accent-color);
+            border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 0.8rem;
+        }
+        .loading { text-align: center; color: var(--accent-color); display: none; margin-top: 20px; }
         
         .result-area {
-            margin-top: 15px;
-            padding: 12px;
-            background: rgba(0,0,0,0.2);
-            border-radius: var(--radius-sm);
-            font-family: monospace;
-            color: var(--success-color);
-            display: none; /* Hidden by default */
-            word-break: break-all;
-            cursor: pointer;
-        }
-
-        /* 比较表格 */
-        .comparison-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-        }
-        .status-item {
-            padding: 15px;
-            background: rgba(255,255,255,0.03);
-            border-radius: var(--radius-md);
-            border: 1px solid var(--card-border);
-        }
-        .status-badge {
-            display: inline-block;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 0.8rem;
-            font-weight: bold;
-            margin-bottom: 8px;
-        }
-        .status-bad { background: rgba(255, 77, 79, 0.2); color: #ff7875; }
-        .status-good { background: rgba(82, 196, 26, 0.2); color: #95de64; }
-
-        /* 代码 Tab 样式 */
-        .tabs {
-            display: flex;
-            gap: 5px;
-            margin-bottom: 15px;
-            border-bottom: 1px solid var(--card-border);
-        }
-        .tab-btn {
-            background: transparent;
-            border: none;
-            color: var(--text-secondary);
-            padding: 8px 16px;
-            cursor: pointer;
-            border-radius: var(--radius-sm) var(--radius-sm) 0 0;
-            position: relative;
-        }
-        .tab-btn.active {
-            color: var(--text-primary);
-            background: rgba(255,255,255,0.05);
-        }
-        .tab-btn.active::after {
-            content: '';
-            position: absolute;
-            bottom: -1px;
-            left: 0;
-            width: 100%;
-            height: 2px;
-            background: var(--accent-color);
-        }
-        
-        .code-block {
-            background: #1e1e1e;
-            padding: 15px;
-            border-radius: var(--radius-md);
-            overflow-x: auto;
-            font-family: 'Consolas', 'Monaco', monospace;
-            font-size: 0.9rem;
-            color: #d4d4d4;
-            display: none;
-        }
-        .code-block.active { display: block; }
-        .comment { color: #6a9955; }
-        .keyword { color: #569cd6; }
-        .string { color: #ce9178; }
-
-        footer {
-            text-align: center;
-            padding: 40px;
-            color: var(--text-secondary);
-            font-size: 0.9rem;
-            border-top: 1px solid var(--card-border);
-            margin-top: auto;
-            background: rgba(20, 20, 20, 0.8);
-        }
-
-        /* 移动端适配 */
-        @media (max-width: 768px) {
-            .hero h1 { font-size: 2rem; }
-            .comparison-grid { grid-template-columns: 1fr; }
-            .nav-links { display: none; } /* 简化：移动端隐藏链接 */
-            nav { justify-content: center; }
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
+            margin-top: 15px; padding: 12px; background: rgba(0,0,0,0.2);
+            border-radius: var(--radius-sm); font-family: monospace; color: #6ccb5f;
+            display: none; word-break: break-all; cursor: pointer;
         }
     </style>
 </head>
 <body>
 
     <nav>
-        <div class="brand">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                <circle cx="8.5" cy="8.5" r="1.5"></circle>
-                <polyline points="21 15 16 10 5 21"></polyline>
-            </svg>
-            Pixiv<span>Proxy</span>
-        </div>
-        <div class="nav-links">
-            <a href="#" class="active">首页</a>
-            <a href="#deploy">部署教程</a>
-            <a href="https://github.com/bileizhen/pixiv" target="_blank">GitHub</a>
-        </div>
+        Pixiv<span>Proxy</span>
     </nav>
 
     <main>
-        <!-- Hero Section -->
         <section class="hero">
-            <h1>图片反向代理服务</h1>
-            <p>基于 Vercel 与 Cloudflare 构建的高速 Pixiv 图片加速服务。<br>无需梯子，直接访问原始画质。</p>
+            <h1>Pixiv 通用解析器</h1>
+            <p style="color: var(--text-secondary)">支持 artworks 页面链接解析，或 i.pximg.net 图片链接转换</p>
         </section>
 
-        <!-- 转换器工具 -->
         <section class="card">
-            <h3>🔗 快速生成链接</h3>
-            <p style="color: var(--text-secondary); font-size: 0.9rem;">将 i.pximg.net 的链接粘贴到下方即可转换。</p>
+            <h3>🔍 解析 / 转换</h3>
             <div class="converter-box">
-                <input type="text" id="urlInput" placeholder="例如: https://i.pximg.net/img-original/...">
-                <button class="fluent-btn" onclick="convertUrl()">生成代理链接</button>
+                <input type="text" id="urlInput" placeholder="粘贴 Pixiv 作品链接 或 图片链接...">
+                <button class="fluent-btn" id="actionBtn" onclick="handleInput()">开始处理</button>
             </div>
-            <div id="resultArea" class="result-area" onclick="copyResult()" title="点击复制"></div>
-        </section>
-
-        <!-- 状态说明 -->
-        <section class="card">
-            <h3>⚡ TL;DR 原理说明</h3>
-            <p style="margin-bottom: 20px;">只需修改域名部分即可使用，路径保持不变。</p>
             
-            <div class="comparison-grid">
-                <div class="status-item">
-                    <span class="status-badge status-bad">原始链接</span>
-                    <div style="font-weight: 600; margin-bottom: 5px;">i.pximg.net</div>
-                    <div style="color: var(--text-secondary); font-size: 0.85rem;">
-                        ❌ 无法直接访问<br>
-                        ❌ 返回 403 Forbidden<br>
-                        ❌ 需要 Referer 验证
-                    </div>
-                </div>
-                <div class="status-item">
-                    <span class="status-badge status-good">代理链接</span>
-                    <div style="font-weight: 600; margin-bottom: 5px;" id="domain-display">domain.com</div>
-                    <div style="color: var(--text-secondary); font-size: 0.85rem;">
-                        ✅ 国内正常访问<br>
-                        ✅ 自动伪造 Referer<br>
-                        ✅ 支持 CDN 缓存加速
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- 部署教程 -->
-        <section class="card" id="deploy">
-            <h3>🛠️ 自行托管配置参考</h3>
-            
-            <div class="tabs">
-                <button class="tab-btn active" onclick="switchTab('vercel')">Vercel</button>
-                <button class="tab-btn" onclick="switchTab('cf')">Cloudflare Workers</button>
-                <button class="tab-btn" onclick="switchTab('nginx')">Nginx</button>
+            <!-- 加载动画 -->
+            <div id="loading" class="loading">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="animation: spin 1s linear infinite;">
+                    <path d="M21 12a9 9 0 1 1-6.219-8.56"></path>
+                </svg>
+                <div style="margin-top: 8px;">正在解析 Artwork 数据...</div>
             </div>
 
-            <!-- Vercel Code -->
-            <div id="vercel" class="code-block active">
-<span class="comment">// api/index.js (部署到 Vercel)</span>
-export default async function handler(req, res) {
-  <span class="keyword">const</span> urlPath = req.url.startsWith('/') ? req.url.substring(1) : req.url;
-  <span class="keyword">const</span> targetUrl = `https://i.pximg.net/${urlPath}`;
+            <!-- 单一链接结果 -->
+            <div id="resultArea" class="result-area" onclick="copyText(this.innerText)" title="点击复制"></div>
 
-  <span class="keyword">const</span> response = <span class="keyword">await</span> fetch(targetUrl, {
-    headers: {
-      <span class="string">'Referer'</span>: <span class="string">'https://www.pixiv.net/'</span>,
-      <span class="string">'User-Agent'</span>: <span class="string">'PixivProxy/1.0'</span>
-    }
-  });
-
-  <span class="comment">// 转发图片数据与 Header...</span>
-}
-            </div>
-
-            <!-- Cloudflare Code -->
-            <div id="cf" class="code-block">
-<span class="comment">// Cloudflare Workers Script</span>
-addEventListener(<span class="string">"fetch"</span>, event => {
-  <span class="keyword">let</span> url = <span class="keyword">new</span> URL(event.request.url);
-  url.hostname = <span class="string">"i.pximg.net"</span>;
-
-  <span class="keyword">let</span> request = <span class="keyword">new</span> Request(url, event.request);
-  event.respondWith(
-    fetch(request, {
-      headers: {
-        <span class="string">'Referer'</span>: <span class="string">'https://www.pixiv.net/'</span>
-      }
-    })
-  );
-});
-            </div>
-
-            <!-- Nginx Code -->
-            <div id="nginx" class="code-block">
-<span class="comment"># Nginx Config Block</span>
-location / {
-    proxy_pass https://i.pximg.net;
-    proxy_set_header Referer <span class="string">"https://www.pixiv.net/"</span>;
-    proxy_set_header Host i.pximg.net;
-    
-    <span class="comment"># 缓存设置</span>
-    proxy_cache pximg;
-    proxy_cache_valid 200 7d;
-}
-            </div>
+            <!-- 画廊结果 -->
+            <div id="gallery" class="gallery"></div>
         </section>
     </main>
 
-    <footer>
-        <p>此网站不隶属于 Pixiv Inc. 仅供学习交流使用。</p>
-        <p>&copy; 2026 Pixiv Proxy Project | by bileizhen.</p>
-    </footer>
-
     <script>
-        // 设置当前域名显示
-        document.getElementById('domain-display').innerText = window.location.hostname;
+        const inputEl = document.getElementById('urlInput');
+        const btnEl = document.getElementById('actionBtn');
+        const loadingEl = document.getElementById('loading');
+        const resultArea = document.getElementById('resultArea');
+        const galleryEl = document.getElementById('gallery');
 
-        function convertUrl() {
-            const input = document.getElementById('urlInput').value.trim();
-            const resultArea = document.getElementById('resultArea');
+        async function handleInput() {
+            const input = inputEl.value.trim();
+            if (!input) return;
+
+            // 重置 UI
+            resultArea.style.display = 'none';
+            galleryEl.innerHTML = '';
             
-            if (!input) {
-                alert("请输入有效的 i.pximg.net 链接");
-                return;
+            // 模式 1: 输入的是 artworks 页面链接 (包含 ID)
+            const artworkMatch = input.match(/(?:artworks\/|illust_id=)(\d+)/);
+            
+            if (artworkMatch) {
+                const pid = artworkMatch[1];
+                await fetchAndShowGallery(pid);
+            } 
+            // 模式 2: 输入的是 i.pximg.net 图片链接
+            else if (input.includes('pximg.net')) {
+                convertDirectUrl(input);
+            } else {
+                alert('无法识别的链接格式。请粘贴 pixiv.net/artworks/ID 或 i.pximg.net 图片链接');
             }
+        }
+
+        // 处理 Artworks 解析
+        async function fetchAndShowGallery(id) {
+            loadingEl.style.display = 'block';
+            btnEl.disabled = true;
 
             try {
-                // 简单的正则匹配提取路径
-                const match = input.match(/pximg\.net\/(.+)/);
-                if (match && match[1]) {
-                    const currentDomain = window.location.origin; // 获取当前协议+域名
-                    const newUrl = `${currentDomain}/${match[1]}`;
+                // 调用后端 API: /analyze/ID (对应 api/analyze.js)
+                const res = await fetch(`/analyze/${id}`);
+                const data = await res.json();
+
+                if (data.error) throw new Error(data.error);
+
+                // 渲染图片
+                data.images.forEach((originalUrl, index) => {
+                    // 将原始链接转换为代理链接
+                    const proxyUrl = getProxyUrl(originalUrl);
                     
-                    resultArea.style.display = 'block';
-                    resultArea.innerHTML = `<strong>生成成功 (点击复制):</strong><br>${newUrl}`;
-                    resultArea.dataset.url = newUrl;
-                } else {
-                    resultArea.style.display = 'block';
-                    resultArea.innerText = "无法解析链接，请确保包含 i.pximg.net";
-                    resultArea.style.color = "var(--danger-color)";
-                }
-            } catch (e) {
-                console.error(e);
-            }
-        }
-
-        function copyResult() {
-            const resultArea = document.getElementById('resultArea');
-            const url = resultArea.dataset.url;
-            if (url) {
-                navigator.clipboard.writeText(url).then(() => {
-                    const originalText = resultArea.innerHTML;
-                    resultArea.innerHTML = "✅ 已复制到剪贴板！";
-                    setTimeout(() => {
-                        resultArea.innerHTML = originalText;
-                    }, 2000);
+                    const div = document.createElement('div');
+                    div.className = 'img-card';
+                    div.innerHTML = `
+                        <a href="${proxyUrl}" target="_blank">
+                            <img src="${proxyUrl}" alt="Page ${index}" loading="lazy" />
+                        </a>
+                        <div class="img-actions">
+                            <div class="url-text">Page ${index + 1}</div>
+                            <button class="copy-btn" onclick="copyText('${proxyUrl}')">复制链接</button>
+                        </div>
+                    `;
+                    galleryEl.appendChild(div);
                 });
+
+            } catch (err) {
+                alert('解析失败: ' + err.message);
+            } finally {
+                loadingEl.style.display = 'none';
+                btnEl.disabled = false;
             }
         }
 
-        function switchTab(tabId) {
-            // 隐藏所有代码块
-            document.querySelectorAll('.code-block').forEach(el => el.classList.remove('active'));
-            // 移除所有按钮激活状态
-            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
-            
-            // 激活选中的
-            document.getElementById(tabId).classList.add('active');
-            // 找到对应的按钮并激活 (此处简化逻辑，实际可以用 event.target)
-            const btns = document.querySelectorAll('.tab-btn');
-            if(tabId === 'vercel') btns[0].classList.add('active');
-            if(tabId === 'cf') btns[1].classList.add('active');
-            if(tabId === 'nginx') btns[2].classList.add('active');
+        // 处理直接图片链接转换
+        function convertDirectUrl(url) {
+            const match = url.match(/pximg\.net\/(.+)/);
+            if (match && match[1]) {
+                const newUrl = getProxyUrl(url);
+                resultArea.style.display = 'block';
+                resultArea.innerHTML = newUrl;
+            }
+        }
+
+        // 核心工具：生成代理链接
+        function getProxyUrl(originalUrl) {
+            const path = originalUrl.split('pximg.net/')[1];
+            // 当前域名 + 图片路径
+            return `${window.location.origin}/${path}`;
+        }
+
+        function copyText(text) {
+            navigator.clipboard.writeText(text).then(() => alert('已复制!'));
         }
     </script>
+    <style>@keyframes spin { 100% { transform: rotate(360deg); } }</style>
 </body>
 </html>
