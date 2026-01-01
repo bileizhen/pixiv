@@ -1,6 +1,10 @@
 {
   "rewrites": [
     {
+      "source": "/analyze/:id",
+      "destination": "/api/analyze.js"
+    },
+    {
       "source": "/(.*)",
       "destination": "/api/index.js"
     }
