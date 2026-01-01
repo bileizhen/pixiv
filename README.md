@@ -1,10 +1,10 @@
-# Pixiv Image Reverse Proxy (Vercel Edition)
+# Pixiv Image Reverse Proxy
 
 <div align="center">
 
 ![Pixiv Proxy](https://socialify.git.ci/v0/pixiv-proxy-ex/image?description=1&font=Inter&language=1&name=1&owner=1&pattern=Circuit%20Board&theme=Dark)
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FYOUR_GITHUB_USERNAME%2FYOUR_REPO_NAME)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fbileizhen%2Fpixiv)
 
 </div>
 
