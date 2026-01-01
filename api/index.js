@@ -1,49 +1,54 @@
 // api/index.js
-export default async function handler(req, res) {
-  // 获取请求的路径 (例如 /img-original/img/...)
-  // req.url 包含了查询参数，我们主要需要路径部分
-  const urlPath = req.url.startsWith('/') ? req.url.substring(1) : req.url;
+// 这一行非常重要，告诉 Vercel 使用 Edge 运行时
+export const config = {
+  runtime: 'edge',
+};
 
-  // 简单的防误触检查
-  if (!urlPath || urlPath === '/' || urlPath.includes('favicon.ico')) {
-    return res.status(200).send('Pixiv Proxy is running by Vercel.');
+export default async function handler(request) {
+  const url = new URL(request.url);
+  
+  // 获取路径 (去掉开头的 /)
+  // 例如请求 https://你的域名/img-zip-ugoira/...
+  // pathname 就是 /img-zip-ugoira/...
+  const path = url.pathname;
+
+  // 简单的防误触
+  if (path === '/' || path === '/favicon.ico') {
+    return new Response('Pixiv Proxy (Edge) is running.', { status: 200 });
   }
 
-  // 拼接目标 Pixiv 图片服务器地址
-  const targetUrl = `https://i.pximg.net/${urlPath}`;
+  // 拼接目标 Pixiv 地址
+  // 注意：Edge Runtime 里 url.search (查询参数) 也要带上
+  const targetUrl = `https://i.pximg.net${path}${url.search}`;
 
   try {
     // 发起请求
     const response = await fetch(targetUrl, {
-      method: 'GET',
       headers: {
-        // 核心：伪造 Referer，骗过 Pixiv 的防盗链
         'Referer': 'https://www.pixiv.net/',
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36'
       }
     });
 
+    // 检查 Pixiv 是否返回错误
     if (!response.ok) {
-      return res.status(response.status).send(`Pixiv Server Error: ${response.statusText}`);
+      return new Response(`Pixiv Error: ${response.statusText}`, { status: response.status });
     }
 
-    // 设置响应头
-    // 转发 Content-Type (如 image/jpeg)
-    const contentType = response.headers.get('content-type');
-    if (contentType) res.setHeader('Content-Type', contentType);
+    // 构造新响应头
+    const newHeaders = new Headers(response.headers);
+    newHeaders.set('Access-Control-Allow-Origin', '*');
+    // 设置强缓存，减少回源
+    newHeaders.set('Cache-Control', 'public, max-age=604800, s-maxage=604800');
 
-    // 设置缓存，减少回源请求 (缓存 7 天)
-    res.setHeader('Cache-Control', 'public, max-age=604800, s-maxage=604800, stale-while-revalidate=86400');
-    
-    // 允许跨域使用 (可选，方便在自己的博客或其他网页引用)
-    res.setHeader('Access-Control-Allow-Origin', '*');
+    // 关键点：直接透传 response.body (Stream)，不使用 await response.arrayBuffer()
+    // 这样可以突破 4.5MB 限制，且内存占用极低
+    return new Response(response.body, {
+      status: response.status,
+      headers: newHeaders
+    });
 
-    // 获取图片二进制数据并返回
-    const arrayBuffer = await response.arrayBuffer();
-    res.status(200).send(Buffer.from(arrayBuffer));
-
-  } catch (error) {
-    console.error(error);
-    res.status(500).send('Internal Server Error');
+  } catch (err) {
+    return new Response(`Proxy Error: ${err.message}`, { status: 500 });
   }
 }
