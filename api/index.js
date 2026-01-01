@@ -1,6 +1,6 @@
 // api/index.js
 
-// 🟢 1. 开启 Edge Runtime (突破 4.5MB 大小限制)
+// 🟢 1. 保持 Edge Runtime (为了下载大文件)
 export const config = {
   runtime: 'edge', 
 };
@@ -13,26 +13,24 @@ export default async function handler(request) {
     return new Response('Pixiv Proxy (Edge) is running.', { status: 200 });
   }
 
-  // 拼接目标地址
+  // 拼接 Pixiv 真实地址
   const targetUrl = `https://i.pximg.net${path}${url.search}`;
 
   // 🟢 2. 准备请求头
   const headers = {
     'Referer': 'https://www.pixiv.net/',
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36'
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36',
+    // 🔥【关键】在这里直接填入你的 Cookie，不要用 process.env
+    // 格式必须是: PHPSESSID=你的ID
+    'Cookie': 'PHPSESSID=89665003_TcEEugHTdp444gcCrryrFldbhWsc96n8' 
   };
-
-  // 🟢 3. (可选保底) 如果环境变量里有 Cookie，在下载图片/ZIP时也带上
-  // 这能解决极少数 R18 资源在下载时也需要验证的问题
-  if (process.env.PIXIV_PHPSESSID) {
-    headers['Cookie'] = `PHPSESSID=${process.env.PIXIV_PHPSESSID}`;
-  }
 
   try {
     const response = await fetch(targetUrl, { headers });
 
-    // 检查上游是否报错 (比如 403 Forbidden 或 404)
+    // 🔴 3. 增加错误调试：如果 Pixiv 拒绝，返回具体的错误码
     if (!response.ok) {
+      // 这里的 statusText 能告诉我们是 403 Forbidden 还是 404 Not Found
       return new Response(`Pixiv Error: ${response.status} ${response.statusText}`, { status: response.status });
     }
 
@@ -40,9 +38,9 @@ export default async function handler(request) {
     const newHeaders = new Headers(response.headers);
     newHeaders.set('Access-Control-Allow-Origin', '*');
     newHeaders.set('Cache-Control', 'public, max-age=604800, s-maxage=604800');
-    newHeaders.delete('content-encoding'); // 防止压缩导致乱码
+    newHeaders.delete('content-encoding');
 
-    // 🟢 4. 流式转发 (Streaming)
+    // 流式转发
     return new Response(response.body, {
       status: response.status,
       headers: newHeaders
