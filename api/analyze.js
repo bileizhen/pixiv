@@ -24,13 +24,18 @@ export default async function handler(req, res) {
   }
 
   try {
-    // ... (后续逻辑保持不变，原封不动复制你之前的代码即可) ...
-    // ... 为了节省篇幅，这里省略中间的 fetch 逻辑，它们不需要改动 ...
-    
-    // 示例：保留原来的逻辑
+    // ⚡ Bolt Optimization: Add Cache-Control to allow Edge Caching of metadata
+    res.setHeader('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=600');
+
+    // ⚡ Bolt Optimization: Fetch info and pages in parallel to save one round-trip time.
     const infoUrl = `https://www.pixiv.net/ajax/illust/${id}?lang=zh`;
-    const infoRes = await fetch(infoUrl, { headers });
-    // ... (后续代码) ...
+    const pagesUrl = `https://www.pixiv.net/ajax/illust/${id}/pages?lang=zh`;
+
+    const [infoRes, pagesRes] = await Promise.all([
+        fetch(infoUrl, { headers }),
+        fetch(pagesUrl, { headers })
+    ]);
+
     if (!infoRes.ok) return res.status(infoRes.status).json({ error: 'Pixiv API Error' });
     const infoData = await infoRes.json();
     if (infoData.error) return res.status(404).json({ error: 'Artwork restricted or not found' });
@@ -38,6 +43,7 @@ export default async function handler(req, res) {
     const illustType = infoData.body.illustType;
 
     if (illustType === 2) {
+        // Ugoira requires extra metadata from ugoira_meta endpoint
         const metaUrl = `https://www.pixiv.net/ajax/illust/${id}/ugoira_meta?lang=zh`;
         const metaRes = await fetch(metaUrl, { headers });
         const metaData = await metaRes.json();
@@ -53,8 +59,7 @@ export default async function handler(req, res) {
         });
     }
 
-    const pagesUrl = `https://www.pixiv.net/ajax/illust/${id}/pages?lang=zh`;
-    const pagesRes = await fetch(pagesUrl, { headers });
+    if (!pagesRes.ok) return res.status(pagesRes.status).json({ error: 'Pixiv Pages API Error' });
     const pagesData = await pagesRes.json();
     const images = pagesData.body.map(item => item.urls.original);
 

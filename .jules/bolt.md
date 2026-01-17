@@ -1,0 +1,3 @@
+## 2026-01-17 - [Ugoira Performance: Blob vs Base64]
+**Learning:** For high-frequency image sequences like Pixiv Ugoira, using Base64 strings for each frame is extremely inefficient. Base64 increases memory footprint by ~33% and adds CPU overhead for decoding. Using `URL.createObjectURL` with `Blob` is significantly faster and more memory-efficient. Additionally, parallelizing the decoding of these frames with `Promise.all` instead of a sequential loop dramatically reduces the "perceived" load time.
+**Action:** Always prefer `Blob` and `ObjectURL` over Base64 for large media assets in the browser, and ensure `URL.revokeObjectURL` is called to prevent memory leaks.
