@@ -98,13 +98,16 @@
 ## ⚠️ 常见问题
 
 **Q: 为什么动图播放/下载 GIF 时进度条不动？**
-A: 请确保您的 `api/index.js` 开启了 `runtime: 'edge'`。如果使用的是 Node.js 运行时，超过 4.5MB 的动图会被 Vercel 截断，导致前端解析失败。本项目默认已配置好 Edge Runtime。
+
+>A: 请确保您的 `api/index.js` 开启了 `runtime: 'edge'`。如果使用的是 Node.js 运行时，超过 4.5MB 的动图会被 Vercel 截断，导致前端解析失败。本项目默认已配置好 Edge Runtime。
 
 **Q: R-18 内容显示 "Artwork restricted" 或加载失败？**
-A: 这是因为 Cookie 失效或未配置。请点击网页右上角设置，重新填入最新的 Cookie。
+
+>A: 这是因为 Cookie 失效或未配置。请点击网页右上角设置，重新填入最新的 Cookie。
 
 **Q: 背景图不显示？**
-A: 背景图调用了第三方随机二次元图片 API。如果该 API 挂了，背景可能变黑，但不影响功能使用。
+
+>A: 背景图调用了第三方随机二次元图片 API。如果该 API 挂了，背景可能变黑，但不影响功能使用。
 
 ## ⚖️ 免责声明
 
