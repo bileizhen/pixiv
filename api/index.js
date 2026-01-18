@@ -46,7 +46,8 @@ export default async function handler(request) {
 
     const newHeaders = new Headers(response.headers);
     newHeaders.set('Access-Control-Allow-Origin', '*');
-    newHeaders.set('Cache-Control', 'public, max-age=604800');
+    // ⚡ Bolt Optimization: Enable Edge Caching with s-maxage and stale-while-revalidate
+    newHeaders.set('Cache-Control', 'public, max-age=604800, s-maxage=604800, stale-while-revalidate=86400');
     newHeaders.delete('content-encoding'); 
     newHeaders.delete('content-security-policy');
     newHeaders.delete('set-cookie');
