@@ -1,8 +1,7 @@
 # 🎨 Pixiv Proxy Pro (Fluent Design)
 
 <div align="center">
-  
-![https://github.bileizhen.top/bileizhen/pixiv/blob/main/PixPin_2026-01-02_01-32-07.png?raw=true](https://github.bileizhen.top/bileizhen/pixiv/blob/main/PixPin_2026-01-02_01-32-07.png?raw=true)
+<img src="https://github.com/bileizhen/pixiv/raw/main/PixPin_2026-01-02_01-32-07.png" alt="图片alt" title="图片title">  
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fbileizhen%2Fpixiv)
 
