@@ -191,6 +191,11 @@
 
         let currentData = null; let framesCache = null; let gifWorkerUrl = null;
 
+        // ⚡ Bolt Optimization: Cache origin and cookie to avoid repeated lookups during rendering
+        const origin = window.location.origin;
+        let cachedUserCookie = localStorage.getItem('user_cookie');
+        let cachedTokenParam = cachedUserCookie ? `?token=${encodeURIComponent(cachedUserCookie)}` : '';
+
         /**
          * 🧹 Cleanup function to revoke ObjectURLs and prevent memory leaks
          * Every time a new artwork is loaded, we must release the memory held by the previous ugoira frames.
@@ -250,7 +255,12 @@
                     gallery.innerHTML = `<div class="single-view"><div class="single-card"><img src="${getProxyUrl(images[0])}"></div></div>`;
                 } else {
                     gallery.className = 'gallery-container grid-view';
-                    let html = ''; images.forEach((url, idx) => { html += `<div class="grid-item" style="animation-delay:${idx*50}ms"><a href="${getProxyUrl(url)}" target="_blank"><img src="${getProxyUrl(url)}" loading="lazy"></a></div>`; }); gallery.innerHTML = html;
+                    let html = '';
+                    images.forEach((url, idx) => {
+                        const proxyUrl = getProxyUrl(url); // ⚡ Bolt Optimization: Calculate proxy URL once per image
+                        html += `<div class="grid-item" style="animation-delay:${idx*50}ms"><a href="${proxyUrl}" target="_blank"><img src="${proxyUrl}" loading="lazy"></a></div>`;
+                    });
+                    gallery.innerHTML = html;
                 }
             }
         }
@@ -456,10 +466,8 @@
         function getProxyUrl(original) {
             if(!original) return '';
             const path = original.split('pximg.net/')[1];
-            const url = `${window.location.origin}/${path}`;
-            const userCookie = localStorage.getItem('user_cookie');
-            if (userCookie) return `${url}?token=${encodeURIComponent(userCookie)}`;
-            return url;
+            // ⚡ Bolt Optimization: Use cached origin and token param
+            return `${origin}/${path}${cachedTokenParam}`;
         }
 
         function renderDirectImage(rawUrl) {
@@ -475,8 +483,22 @@
         function closeModal(id) { document.getElementById(id).classList.remove('open'); }
         function saveCookie() {
             const val = document.getElementById('cookieInput').value.trim();
-            if(val) { localStorage.setItem('user_cookie', val); document.getElementById('cookieStatus').style.display='block'; showToast('已保存配置'); }
-            else { localStorage.removeItem('user_cookie'); document.getElementById('cookieStatus').style.display='none'; showToast('已清除配置'); }
+            if(val) {
+                localStorage.setItem('user_cookie', val);
+                document.getElementById('cookieStatus').style.display='block';
+                showToast('已保存配置');
+                // ⚡ Bolt Optimization: Update cache
+                cachedUserCookie = val;
+                cachedTokenParam = `?token=${encodeURIComponent(val)}`;
+            }
+            else {
+                localStorage.removeItem('user_cookie');
+                document.getElementById('cookieStatus').style.display='none';
+                showToast('已清除配置');
+                // ⚡ Bolt Optimization: Update cache
+                cachedUserCookie = null;
+                cachedTokenParam = '';
+            }
             closeModal('settingsModal');
         }
         function showToast(msg) { const t=document.getElementById('toast'); t.innerText=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),3000); }
