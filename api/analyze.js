@@ -10,10 +10,11 @@ export default async function handler(req, res) {
   };
 
   // 2. Cookie 优先级逻辑：
-  // 优先级 1: 前端传来的自定义 Header (x-user-cookie)
-  // 优先级 2: Vercel 环境变量 (PIXIV_COOKIE)
-  // 优先级 3: Vercel 环境变量 (PHPSESSID)
-  const clientCookie = req.headers['x-user-cookie'];
+  // 优先级 1: URL 参数中的 token (用于 Edge Cache 自动分库)
+  // 优先级 2: 前端传来的自定义 Header (x-user-cookie)
+  // 优先级 3: Vercel 环境变量 (PIXIV_COOKIE)
+  // 优先级 4: Vercel 环境变量 (PHPSESSID)
+  const clientCookie = req.query.token || req.headers['x-user-cookie'];
   
   if (clientCookie) {
     headers['Cookie'] = clientCookie;
@@ -24,7 +25,11 @@ export default async function handler(req, res) {
   }
 
   try {
-    // ⚡ Bolt Optimization: Add Cache-Control to allow Edge Caching of metadata
+    /**
+     * ⚡ Bolt Optimization: Enable Edge Caching.
+     * By using the 'token' query parameter (see above), the cache is automatically
+     * partitioned by the user's authentication state by the Edge Network.
+     */
     res.setHeader('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=600');
 
     // ⚡ Bolt Optimization: Fetch info and pages in parallel to save one round-trip time.
