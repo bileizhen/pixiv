@@ -1,3 +1,9 @@
-## 2026-01-17 - [Ugoira Performance: Blob vs Base64]
-**Learning:** For high-frequency image sequences like Pixiv Ugoira, using Base64 strings for each frame is extremely inefficient. Base64 increases memory footprint by ~33% and adds CPU overhead for decoding. Using `URL.createObjectURL` with `Blob` is significantly faster and more memory-efficient. Additionally, parallelizing the decoding of these frames with `Promise.all` instead of a sequential loop dramatically reduces the "perceived" load time.
-**Action:** Always prefer `Blob` and `ObjectURL` over Base64 for large media assets in the browser, and ensure `URL.revokeObjectURL` is called to prevent memory leaks.
+# Bolt's Journal - Critical Learnings
+
+## 2025-05-14 - [Edge Cache vs. Token Leakage]
+**Learning:** Attempting to partition Edge Cache by moving authentication tokens from the `Cookie` header to a URL query parameter (`?token=...`) is a security anti-pattern. While it enables automatic caching on Vercel Edge without complex `Vary` headers, it exposes sensitive user cookies in browser history, server logs, and Referer headers. Furthermore, if the upstream API does not provide cache-control headers, the Edge Network will not cache the response anyway, negating the performance benefit.
+**Action:** Prioritize frontend-side optimizations (caching lookups, non-blocking script loading) when backend caching requires compromising security or lacks infrastructure support.
+
+## 2025-05-14 - [Frontend Hot Path Optimization]
+**Learning:** In a single-page application with heavy image processing (like Ugoira GIF generation), utility functions like `getProxyUrl` are called in tight loops (e.g., 50+ times per second during frame rendering). Even "fast" browser APIs like `localStorage.getItem` or `window.location.origin` introduce measurable overhead when multiplied by high call counts.
+**Action:** Always cache stable environment values (origin, user settings) in local variables outside of high-frequency functions.
