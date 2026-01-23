@@ -1,19 +1,33 @@
 // api/analyze.js
-export default async function handler(req, res) {
-  const { id } = req.query;
-  if (!id) return res.status(400).json({ error: 'Missing ID' });
+export const config = { runtime: 'edge' };
+
+const BASE_HEADERS = {
+  'Referer': 'https://www.pixiv.net/',
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:146.0) Gecko/20100101 Firefox/146.0',
+};
+
+export default async function handler(req) {
+  const url = new URL(req.url);
+  // Extract ID from query param or from path (/analyze/:id)
+  let id = url.searchParams.get('id');
+  if (!id) {
+    const parts = url.pathname.split('/').filter(Boolean);
+    const last = parts[parts.length - 1];
+    id = last === 'analyze' ? null : last;
+  }
+
+  if (!id) {
+    return new Response(JSON.stringify({ error: 'Missing ID' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+    });
+  }
 
   // 1. 定义基础 Headers
-  const headers = {
-    'Referer': 'https://www.pixiv.net/',
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:146.0) Gecko/20100101 Firefox/146.0',
-  };
+  const headers = { ...BASE_HEADERS };
 
-  // 2. Cookie 优先级逻辑：
-  // 优先级 1: 前端传来的自定义 Header (x-user-cookie)
-  // 优先级 2: Vercel 环境变量 (PIXIV_COOKIE)
-  // 优先级 3: Vercel 环境变量 (PHPSESSID)
-  const clientCookie = req.headers['x-user-cookie'];
+  // 2. Cookie 优先级逻辑
+  const clientCookie = req.headers.get('x-user-cookie');
   
   if (clientCookie) {
     headers['Cookie'] = clientCookie;
@@ -24,8 +38,11 @@ export default async function handler(req, res) {
   }
 
   try {
-    // ⚡ Bolt Optimization: Add Cache-Control to allow Edge Caching of metadata
-    res.setHeader('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=600');
+    const commonHeaders = {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=600'
+    };
 
     // ⚡ Bolt Optimization: Fetch info and pages in parallel to save one round-trip time.
     const infoUrl = `https://www.pixiv.net/ajax/illust/${id}?lang=zh`;
@@ -36,9 +53,14 @@ export default async function handler(req, res) {
         fetch(pagesUrl, { headers })
     ]);
 
-    if (!infoRes.ok) return res.status(infoRes.status).json({ error: 'Pixiv API Error' });
+    if (!infoRes.ok) {
+        return new Response(JSON.stringify({ error: 'Pixiv API Error' }), { status: infoRes.status, headers: commonHeaders });
+    }
+
     const infoData = await infoRes.json();
-    if (infoData.error) return res.status(404).json({ error: 'Artwork restricted or not found' });
+    if (infoData.error) {
+        return new Response(JSON.stringify({ error: 'Artwork restricted or not found' }), { status: 404, headers: commonHeaders });
+    }
     
     const illustType = infoData.body.illustType;
 
@@ -48,29 +70,37 @@ export default async function handler(req, res) {
         const metaRes = await fetch(metaUrl, { headers });
         const metaData = await metaRes.json();
         
-        if(!metaData.body) return res.status(403).json({ error: 'R-18 Ugoira blocked.' });
+        if(!metaData.body) {
+            return new Response(JSON.stringify({ error: 'R-18 Ugoira blocked.' }), { status: 403, headers: commonHeaders });
+        }
 
-        return res.status(200).json({
+        return new Response(JSON.stringify({
             isUgoira: true,
             title: infoData.body.title,
             original: metaData.body.originalSrc, 
             frames: metaData.body.frames, 
             cover: infoData.body.urls.original 
-        });
+        }), { status: 200, headers: commonHeaders });
     }
 
-    if (!pagesRes.ok) return res.status(pagesRes.status).json({ error: 'Pixiv Pages API Error' });
+    if (!pagesRes.ok) {
+        return new Response(JSON.stringify({ error: 'Pixiv Pages API Error' }), { status: pagesRes.status, headers: commonHeaders });
+    }
+
     const pagesData = await pagesRes.json();
     const images = pagesData.body.map(item => item.urls.original);
 
-    return res.status(200).json({
+    return new Response(JSON.stringify({
       isUgoira: false,
       title: infoData.body.title,
       images: images
-    });
+    }), { status: 200, headers: commonHeaders });
 
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: error.message });
+    return new Response(JSON.stringify({ error: error.message }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+    });
   }
 }

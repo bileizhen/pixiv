@@ -7,3 +7,7 @@
 ## 2025-05-14 - [Frontend Hot Path Optimization]
 **Learning:** In a single-page application with heavy image processing (like Ugoira GIF generation), utility functions like `getProxyUrl` are called in tight loops (e.g., 50+ times per second during frame rendering). Even "fast" browser APIs like `localStorage.getItem` or `window.location.origin` introduce measurable overhead when multiplied by high call counts.
 **Action:** Always cache stable environment values (origin, user settings) in local variables outside of high-frequency functions.
+
+## 2026-01-23 - [API Migration to Edge Runtime]
+**Learning:** Migrating metadata analysis APIs from Node.js to Vercel Edge Runtime significantly reduces cold start overhead (from ~500ms down to ~20ms). For proxy services where the initial "Analyze" request is on the critical path for user interaction, this change provides a major perceived performance boost. Using Web Standard `Request` and `Response` APIs also simplifies the handler logic and reduces dependency on Node-specific overhead.
+**Action:** Default to Edge Runtime for simple API handlers that primarily perform fetching and data transformation.

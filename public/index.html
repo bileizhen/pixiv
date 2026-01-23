@@ -237,8 +237,9 @@
                 let id = raw; const match = raw.match(/(?:artworks\/|illust_id=)(\d+)/);
                 if(match) id = match[1]; else if(raw.includes('pximg.net')) { renderDirectImage(raw); return; }
                 
-                const headers = {}; const userCookie = localStorage.getItem('user_cookie');
-                if(userCookie) headers['x-user-cookie'] = userCookie;
+                const headers = {};
+                // ⚡ Bolt: Use cached cookie instead of localStorage.getItem
+                if(CACHED_COOKIE) headers['x-user-cookie'] = CACHED_COOKIE;
                 
                 const res = await fetch(`/analyze/${id}`, { headers });
                 const data = await res.json();
@@ -263,7 +264,12 @@
                     gallery.innerHTML = `<div class="single-view"><div class="single-card"><img src="${getProxyUrl(images[0])}"></div></div>`;
                 } else {
                     gallery.className = 'gallery-container grid-view';
-                    let html = ''; images.forEach((url, idx) => { html += `<div class="grid-item" style="animation-delay:${idx*50}ms"><a href="${getProxyUrl(url)}" target="_blank"><img src="${getProxyUrl(url)}" loading="lazy"></a></div>`; }); gallery.innerHTML = html;
+                    // ⚡ Bolt: Cache proxy URL to avoid redundant calls and add decoding hint
+                    let html = ''; images.forEach((url, idx) => {
+                        const proxyUrl = getProxyUrl(url);
+                        html += `<div class="grid-item" style="animation-delay:${idx*50}ms"><a href="${proxyUrl}" target="_blank"><img src="${proxyUrl}" loading="lazy" decoding="async"></a></div>`;
+                    });
+                    gallery.innerHTML = html;
                 }
             }
         }
@@ -468,10 +474,9 @@
 
         function getProxyUrl(original) {
             if(!original) return '';
-            const path = original.split('pximg.net/')[1];
-            const url = `${CACHED_ORIGIN}/${path}`;
-            if (CACHED_TOKEN) return `${url}?token=${CACHED_TOKEN}`;
-            return url;
+            // ⚡ Bolt: Direct string concatenation is faster than template literals
+            const url = CACHED_ORIGIN + '/' + original.split('pximg.net/')[1];
+            return CACHED_TOKEN ? url + '?token=' + CACHED_TOKEN : url;
         }
 
         function renderDirectImage(rawUrl) {
