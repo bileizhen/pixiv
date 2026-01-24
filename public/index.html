@@ -263,7 +263,13 @@
                     gallery.innerHTML = `<div class="single-view"><div class="single-card"><img src="${getProxyUrl(images[0])}"></div></div>`;
                 } else {
                     gallery.className = 'gallery-container grid-view';
-                    let html = ''; images.forEach((url, idx) => { html += `<div class="grid-item" style="animation-delay:${idx*50}ms"><a href="${getProxyUrl(url)}" target="_blank"><img src="${getProxyUrl(url)}" loading="lazy"></a></div>`; }); gallery.innerHTML = html;
+                    let html = '';
+                    // ⚡ Bolt Optimization: Cache proxy URL inside the loop and use decoding="async" to reduce main-thread blocking during image decoding.
+                    images.forEach((url, idx) => {
+                        const pUrl = getProxyUrl(url);
+                        html += `<div class="grid-item" style="animation-delay:${idx*50}ms"><a href="${pUrl}" target="_blank"><img src="${pUrl}" loading="lazy" decoding="async"></a></div>`;
+                    });
+                    gallery.innerHTML = html;
                 }
             }
         }
@@ -459,7 +465,12 @@
                     saveAs(await(await fetch(getProxyUrl(currentData.original))).blob(), `Pixiv_Ugoira_${currentData.title}.zip`);
                 } else {
                     const zip = new JSZip(); const folder = zip.folder(`pixiv_${Date.now()}`);
-                    await Promise.all(currentData.images.map(async url => folder.file(url.split('/').pop(), await (await fetch(getProxyUrl(url))).blob())));
+                    await Promise.all(currentData.images.map(async url => {
+                        const pUrl = getProxyUrl(url);
+                        // ⚡ Bolt Optimization: Use substring/lastIndexOf instead of split().pop()
+                        const fileName = url.substring(url.lastIndexOf('/') + 1);
+                        return folder.file(fileName, await (await fetch(pUrl)).blob());
+                    }));
                     saveAs(await zip.generateAsync({type:"blob"}), `Pixiv_${currentData.title}.zip`);
                 }
                 showToast('✅ 下载完成');
@@ -468,10 +479,13 @@
 
         function getProxyUrl(original) {
             if(!original) return '';
-            const path = original.split('pximg.net/')[1];
-            const url = `${CACHED_ORIGIN}/${path}`;
-            if (CACHED_TOKEN) return `${url}?token=${CACHED_TOKEN}`;
-            return url;
+            // ⚡ Bolt Optimization: Use substring/indexOf instead of split to avoid array allocation in hot path.
+            // Impact: Called frequently during Ugoira rendering and gallery generation.
+            const idx = original.indexOf('pximg.net/');
+            if (idx === -1) return original; // Safe fallback
+            const path = original.substring(idx + 10);
+            const url = CACHED_ORIGIN + '/' + path;
+            return CACHED_TOKEN ? url + '?token=' + CACHED_TOKEN : url;
         }
 
         function renderDirectImage(rawUrl) {
