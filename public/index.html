@@ -251,19 +251,33 @@
         }
         
         function renderContent(data) {
-            gallery.innerHTML = ''; toolbar.classList.add('active'); const title = data.title || '无标题';
+            // ⚡ Bolt Optimization: Reset gallery class to avoid layout inheritance from previous results.
+            gallery.innerHTML = ''; gallery.className = 'gallery-container';
+            toolbar.classList.add('active'); const title = data.title || '无标题';
+
             if (data.isUgoira) {
                 document.getElementById('countInfo').innerText = `🎬 动图 | ${title}`;
                 gifBtn.style.display = 'flex';
-                gallery.innerHTML = `<div class="single-view"><div class="single-card"><img src="${getProxyUrl(data.cover)}" id="ugoiraCover"><canvas id="ugoiraCanvas" style="display:none"></canvas><div class="play-overlay" id="playBtn" onclick="playUgoira()"><div class="play-btn-circle"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"></path></svg></div></div><div class="loading-layer" id="loader"><div class="spinner"></div><div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div><div style="margin-top:8px;" id="progressText">准备中...</div></div></div></div>`;
+                // ⚡ Bolt Optimization: Add decoding="async" for off-main-thread image decoding.
+                gallery.innerHTML = `<div class="single-view"><div class="single-card"><img src="${getProxyUrl(data.cover)}" id="ugoiraCover" decoding="async"><canvas id="ugoiraCanvas" style="display:none"></canvas><div class="play-overlay" id="playBtn" onclick="playUgoira()"><div class="play-btn-circle"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"></path></svg></div></div><div class="loading-layer" id="loader"><div class="spinner"></div><div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div><div style="margin-top:8px;" id="progressText">准备中...</div></div></div></div>`;
             } else {
                 const images = data.images;
                 document.getElementById('countInfo').innerHTML = `${data.isR18 ? '<span style="color:#ff6b6b;">R-18</span> ' : ''}🖼️ ${images.length}P | ${title}`;
                 if (images.length === 1) {
-                    gallery.innerHTML = `<div class="single-view"><div class="single-card"><img src="${getProxyUrl(images[0])}"></div></div>`;
+                    // ⚡ Bolt Optimization: Add decoding="async".
+                    gallery.innerHTML = `<div class="single-view"><div class="single-card"><img src="${getProxyUrl(images[0])}" decoding="async"></div></div>`;
                 } else {
                     gallery.className = 'gallery-container grid-view';
-                    let html = ''; images.forEach((url, idx) => { html += `<div class="grid-item" style="animation-delay:${idx*50}ms"><a href="${getProxyUrl(url)}" target="_blank"><img src="${getProxyUrl(url)}" loading="lazy"></a></div>`; }); gallery.innerHTML = html;
+                    let html = '';
+                    /**
+                     * ⚡ Bolt Optimization: Cache proxy URL and use decoding="async".
+                     * Impact: Reduces function calls and ensures smoother scrolling in large galleries.
+                     */
+                    images.forEach((url, idx) => {
+                        const pUrl = getProxyUrl(url);
+                        html += `<div class="grid-item" style="animation-delay:${idx*50}ms"><a href="${pUrl}" target="_blank"><img src="${pUrl}" loading="lazy" decoding="async"></a></div>`;
+                    });
+                    gallery.innerHTML = html;
                 }
             }
         }
@@ -466,16 +480,20 @@
             } catch (e) { showToast('❌ 下载失败'); } finally { btn.disabled = false; }
         }
 
+        /**
+         * ⚡ Bolt Optimization: Use indexOf/substring instead of split.
+         * Why: split() creates an array which is expensive in hot execution paths (like animation loops).
+         */
         function getProxyUrl(original) {
             if(!original) return '';
-            const path = original.split('pximg.net/')[1];
-            const url = `${CACHED_ORIGIN}/${path}`;
-            if (CACHED_TOKEN) return `${url}?token=${CACHED_TOKEN}`;
-            return url;
+            const idx = original.indexOf('pximg.net/');
+            const path = idx !== -1 ? original.substring(idx + 10) : original;
+            const url = CACHED_ORIGIN + '/' + path;
+            return CACHED_TOKEN ? url + '?token=' + CACHED_TOKEN : url;
         }
 
         function renderDirectImage(rawUrl) {
-            gallery.innerHTML = `<div class="single-view"><div class="single-card"><img src="${getProxyUrl(rawUrl)}"></div></div>`;
+            gallery.innerHTML = `<div class="single-view"><div class="single-card"><img src="${getProxyUrl(rawUrl)}" decoding="async"></div></div>`;
             toolbar.classList.add('active');
         }
 
