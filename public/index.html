@@ -263,7 +263,11 @@
                     gallery.innerHTML = `<div class="single-view"><div class="single-card"><img src="${getProxyUrl(images[0])}"></div></div>`;
                 } else {
                     gallery.className = 'gallery-container grid-view';
-                    let html = ''; images.forEach((url, idx) => { html += `<div class="grid-item" style="animation-delay:${idx*50}ms"><a href="${getProxyUrl(url)}" target="_blank"><img src="${getProxyUrl(url)}" loading="lazy"></a></div>`; }); gallery.innerHTML = html;
+                    let html = ''; images.forEach((url, idx) => {
+                        const pUrl = getProxyUrl(url);
+                        html += '<div class="grid-item" style="animation-delay:' + (idx * 50) + 'ms"><a href="' + pUrl + '" target="_blank"><img src="' + pUrl + '" loading="lazy"></a></div>';
+                    });
+                    gallery.innerHTML = html;
                 }
             }
         }
@@ -466,11 +470,18 @@
             } catch (e) { showToast('❌ 下载失败'); } finally { btn.disabled = false; }
         }
 
+        /**
+         * ⚡ Bolt Optimization: Use indexOf/substring instead of split to avoid array allocations.
+         * Use direct string concatenation instead of template literals for micro-performance.
+         * Impact: Shaves off overhead in high-frequency calls like animation setup.
+         */
         function getProxyUrl(original) {
             if(!original) return '';
-            const path = original.split('pximg.net/')[1];
-            const url = `${CACHED_ORIGIN}/${path}`;
-            if (CACHED_TOKEN) return `${url}?token=${CACHED_TOKEN}`;
+            const idx = original.indexOf('pximg.net/');
+            if(idx === -1) return original;
+            const path = original.substring(idx + 10); // length of 'pximg.net/' is 10
+            const url = CACHED_ORIGIN + '/' + path;
+            if (CACHED_TOKEN) return url + '?token=' + CACHED_TOKEN;
             return url;
         }
 
