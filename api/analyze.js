@@ -27,20 +27,21 @@ export default async function handler(req, res) {
     // ⚡ Bolt Optimization: Add Cache-Control to allow Edge Caching of metadata
     res.setHeader('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=600');
 
-    // ⚡ Bolt Optimization: Fetch info and pages in parallel to save one round-trip time.
+    // ⚡ Bolt Optimization: Fetch info and pages in parallel.
     const infoUrl = `https://www.pixiv.net/ajax/illust/${id}?lang=zh`;
     const pagesUrl = `https://www.pixiv.net/ajax/illust/${id}/pages?lang=zh`;
 
-    const [infoRes, pagesRes] = await Promise.all([
-        fetch(infoUrl, { headers }),
-        fetch(pagesUrl, { headers })
-    ]);
+    // Initiate fetches concurrently. We handle errors on pagesPromise to prevent unhandled rejections
+    // if we decide to return early (for single-page works) and never await it.
+    const infoPromise = fetch(infoUrl, { headers });
+    const pagesPromise = fetch(pagesUrl, { headers }).catch(err => ({ ok: false, status: 500, error: err }));
 
+    const infoRes = await infoPromise;
     if (!infoRes.ok) return res.status(infoRes.status).json({ error: 'Pixiv API Error' });
     const infoData = await infoRes.json();
     if (infoData.error) return res.status(404).json({ error: 'Artwork restricted or not found' });
     
-    const illustType = infoData.body.illustType;
+    const { illustType, pageCount, title, urls } = infoData.body;
 
     if (illustType === 2) {
         // Ugoira requires extra metadata from ugoira_meta endpoint
@@ -52,20 +53,32 @@ export default async function handler(req, res) {
 
         return res.status(200).json({
             isUgoira: true,
-            title: infoData.body.title,
+            title: title,
             original: metaData.body.originalSrc, 
             frames: metaData.body.frames, 
-            cover: infoData.body.urls.original 
+            cover: urls.original
         });
     }
 
+    // ⚡ Bolt Optimization: Early return for single-page illustrations (the majority of cases).
+    // This avoids waiting for the 'pages' API response and skips unnecessary JSON parsing.
+    if (pageCount === 1) {
+        return res.status(200).json({
+            isUgoira: false,
+            title: title,
+            images: [urls.original]
+        });
+    }
+
+    // Multi-page illustration: wait for the previously initiated pagesPromise
+    const pagesRes = await pagesPromise;
     if (!pagesRes.ok) return res.status(pagesRes.status).json({ error: 'Pixiv Pages API Error' });
     const pagesData = await pagesRes.json();
     const images = pagesData.body.map(item => item.urls.original);
 
     return res.status(200).json({
       isUgoira: false,
-      title: infoData.body.title,
+      title: title,
       images: images
     });
 
