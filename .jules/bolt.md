@@ -7,3 +7,7 @@
 ## 2025-05-14 - [Frontend Hot Path Optimization]
 **Learning:** In a single-page application with heavy image processing (like Ugoira GIF generation), utility functions like `getProxyUrl` are called in tight loops (e.g., 50+ times per second during frame rendering). Even "fast" browser APIs like `localStorage.getItem` or `window.location.origin` introduce measurable overhead when multiplied by high call counts.
 **Action:** Always cache stable environment values (origin, user settings) in local variables outside of high-frequency functions.
+
+## 2025-05-14 - [Background Promise Safety in Serverless]
+**Learning:** When implementing an "early-return" strategy to optimize latency (returning as soon as primary data is ready while other parallel requests are still in flight), background promises MUST be handled with `.catch()` or `Promise.allSettled`. If a background promise rejects after the function has already sent a response, it can cause unhandled rejection errors that crash or destabilize the Node.js process.
+**Action:** Always attach a `.catch(() => {})` or similar handler to parallel promises that might not be awaited.
