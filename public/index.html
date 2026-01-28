@@ -251,19 +251,31 @@
         }
         
         function renderContent(data) {
+            // ⚡ Bolt Optimization: Reset gallery class to prevent layout inheritance from previous views
+            gallery.className = 'gallery-container';
             gallery.innerHTML = ''; toolbar.classList.add('active'); const title = data.title || '无标题';
             if (data.isUgoira) {
                 document.getElementById('countInfo').innerText = `🎬 动图 | ${title}`;
                 gifBtn.style.display = 'flex';
-                gallery.innerHTML = `<div class="single-view"><div class="single-card"><img src="${getProxyUrl(data.cover)}" id="ugoiraCover"><canvas id="ugoiraCanvas" style="display:none"></canvas><div class="play-overlay" id="playBtn" onclick="playUgoira()"><div class="play-btn-circle"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"></path></svg></div></div><div class="loading-layer" id="loader"><div class="spinner"></div><div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div><div style="margin-top:8px;" id="progressText">准备中...</div></div></div></div>`;
+                gallery.innerHTML = `<div class="single-view"><div class="single-card"><img src="${getProxyUrl(data.cover)}" id="ugoiraCover" decoding="async"><canvas id="ugoiraCanvas" style="display:none"></canvas><div class="play-overlay" id="playBtn" onclick="playUgoira()"><div class="play-btn-circle"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"></path></svg></div></div><div class="loading-layer" id="loader"><div class="spinner"></div><div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div><div style="margin-top:8px;" id="progressText">准备中...</div></div></div></div>`;
             } else {
                 const images = data.images;
                 document.getElementById('countInfo').innerHTML = `${data.isR18 ? '<span style="color:#ff6b6b;">R-18</span> ' : ''}🖼️ ${images.length}P | ${title}`;
                 if (images.length === 1) {
-                    gallery.innerHTML = `<div class="single-view"><div class="single-card"><img src="${getProxyUrl(images[0])}"></div></div>`;
+                    gallery.innerHTML = `<div class="single-view"><div class="single-card"><img src="${getProxyUrl(images[0])}" decoding="async"></div></div>`;
                 } else {
                     gallery.className = 'gallery-container grid-view';
-                    let html = ''; images.forEach((url, idx) => { html += `<div class="grid-item" style="animation-delay:${idx*50}ms"><a href="${getProxyUrl(url)}" target="_blank"><img src="${getProxyUrl(url)}" loading="lazy"></a></div>`; }); gallery.innerHTML = html;
+                    /**
+                     * ⚡ Bolt Performance Optimization:
+                     * 1. Cache proxy URL in a variable to avoid redundant function calls.
+                     * 2. Add 'decoding="async"' to improve main-thread responsiveness.
+                     */
+                    let html = '';
+                    images.forEach((url, idx) => {
+                        const proxyUrl = getProxyUrl(url);
+                        html += `<div class="grid-item" style="animation-delay:${idx*50}ms"><a href="${proxyUrl}" target="_blank"><img src="${proxyUrl}" loading="lazy" decoding="async"></a></div>`;
+                    });
+                    gallery.innerHTML = html;
                 }
             }
         }

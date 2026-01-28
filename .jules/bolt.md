@@ -7,3 +7,7 @@
 ## 2025-05-14 - [Frontend Hot Path Optimization]
 **Learning:** In a single-page application with heavy image processing (like Ugoira GIF generation), utility functions like `getProxyUrl` are called in tight loops (e.g., 50+ times per second during frame rendering). Even "fast" browser APIs like `localStorage.getItem` or `window.location.origin` introduce measurable overhead when multiplied by high call counts.
 **Action:** Always cache stable environment values (origin, user settings) in local variables outside of high-frequency functions.
+
+## 2026-01-28 - [Early Return with Parallel Promises]
+**Learning:** In Vercel functions, initiating multiple parallel fetches but only awaiting the ones necessary for the current logic path can significantly reduce latency for the common case (e.g., single-page artworks) without increasing it for the complex case. However, unused promises MUST be handled with `.catch(() => {})` to prevent unhandled rejection errors in the Node.js runtime if the function execution finishes or the promise fails later.
+**Action:** Use separate promise variables instead of `Promise.all` when an early return is possible based on the result of the first-returning promise.
