@@ -27,20 +27,36 @@ export default async function handler(req, res) {
     // ⚡ Bolt Optimization: Add Cache-Control to allow Edge Caching of metadata
     res.setHeader('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=600');
 
-    // ⚡ Bolt Optimization: Fetch info and pages in parallel to save one round-trip time.
+    // ⚡ Bolt Optimization: Fetch info and pages in parallel, but handle promises separately.
+    // This allows an early return for single-page illustrations (most common) without waiting for /pages.
     const infoUrl = `https://www.pixiv.net/ajax/illust/${id}?lang=zh`;
     const pagesUrl = `https://www.pixiv.net/ajax/illust/${id}/pages?lang=zh`;
 
-    const [infoRes, pagesRes] = await Promise.all([
-        fetch(infoUrl, { headers }),
-        fetch(pagesUrl, { headers })
-    ]);
+    const infoPromise = fetch(infoUrl, { headers });
+    const pagesPromise = fetch(pagesUrl, { headers }).catch(err => {
+        console.error("Background pages fetch failed:", err);
+        return null; // Handled later if needed
+    });
 
+    const infoRes = await infoPromise;
     if (!infoRes.ok) return res.status(infoRes.status).json({ error: 'Pixiv API Error' });
+
     const infoData = await infoRes.json();
     if (infoData.error) return res.status(404).json({ error: 'Artwork restricted or not found' });
     
     const illustType = infoData.body.illustType;
+    const pageCount = infoData.body.pageCount;
+    const isR18 = infoData.body.xRestrict > 0;
+
+    // Early return for single-page artworks (illustType 0/1)
+    if (pageCount === 1 && illustType !== 2) {
+        return res.status(200).json({
+            isUgoira: false,
+            isR18,
+            title: infoData.body.title,
+            images: [infoData.body.urls.original]
+        });
+    }
 
     if (illustType === 2) {
         // Ugoira requires extra metadata from ugoira_meta endpoint
@@ -52,6 +68,7 @@ export default async function handler(req, res) {
 
         return res.status(200).json({
             isUgoira: true,
+            isR18,
             title: infoData.body.title,
             original: metaData.body.originalSrc, 
             frames: metaData.body.frames, 
@@ -59,12 +76,15 @@ export default async function handler(req, res) {
         });
     }
 
-    if (!pagesRes.ok) return res.status(pagesRes.status).json({ error: 'Pixiv Pages API Error' });
+    const pagesRes = await pagesPromise;
+    if (!pagesRes || !pagesRes.ok) return res.status(pagesRes?.status || 500).json({ error: 'Pixiv Pages API Error' });
+
     const pagesData = await pagesRes.json();
     const images = pagesData.body.map(item => item.urls.original);
 
     return res.status(200).json({
       isUgoira: false,
+      isR18,
       title: infoData.body.title,
       images: images
     });

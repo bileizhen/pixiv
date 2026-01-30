@@ -7,3 +7,7 @@
 ## 2025-05-14 - [Frontend Hot Path Optimization]
 **Learning:** In a single-page application with heavy image processing (like Ugoira GIF generation), utility functions like `getProxyUrl` are called in tight loops (e.g., 50+ times per second during frame rendering). Even "fast" browser APIs like `localStorage.getItem` or `window.location.origin` introduce measurable overhead when multiplied by high call counts.
 **Action:** Always cache stable environment values (origin, user settings) in local variables outside of high-frequency functions.
+
+## 2025-05-15 - [Early Return for API Parallelism]
+**Learning:** In a serverless environment fetching multiple dependent or independent resources, using `Promise.all` can bottleneck the response by the slowest resource even if it's not needed for the final output. Separating promises and awaiting the "critical path" first allows for early returns, significantly reducing latency for the most common use cases (e.g., single-page vs. multi-page results).
+**Action:** Always evaluate if all resources in a `Promise.all` block are strictly necessary for every response path; implement early return patterns to skip waiting for optional or backgrounded resources.
