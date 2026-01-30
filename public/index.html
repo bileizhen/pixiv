@@ -191,6 +191,14 @@
         let CACHED_COOKIE = localStorage.getItem('user_cookie');
         let CACHED_TOKEN = CACHED_COOKIE ? encodeURIComponent(CACHED_COOKIE) : null;
 
+        /**
+         * ⚡ Bolt Optimization: Client-side Metadata Cache & Request Management
+         * ANALYSIS_CACHE: Stores previously fetched artwork data to allow 0ms repeated lookups.
+         * activeAbortController: Tracks ongoing fetches to allow cancellation of stale requests.
+         */
+        const ANALYSIS_CACHE = new Map();
+        let activeAbortController = null;
+
         // Wrap main logic in DOMContentLoaded because dependencies are loaded with 'defer'
         document.addEventListener('DOMContentLoaded', () => {
             (function(){
@@ -229,23 +237,40 @@
         // Core Logic
         async function processInput() {
             const raw = input.value.trim(); if(!raw) return;
+
+            // ⚡ Bolt Optimization: Request Cancellation
+            if (activeAbortController) activeAbortController.abort();
+            activeAbortController = new AbortController();
+
+            let id = raw; const match = raw.match(/(?:artworks\/|illust_id=)(\d+)/);
+            if(match) id = match[1]; else if(raw.includes('pximg.net')) { renderDirectImage(raw); return; }
+
+            // ⚡ Bolt Optimization: Client-side Metadata Cache lookup
+            if (ANALYSIS_CACHE.has(id)) {
+                currentData = ANALYSIS_CACHE.get(id);
+                cleanupFramesCache();
+                renderContent(currentData);
+                return;
+            }
+
             gallery.innerHTML = '<div style="text-align:center;margin-top:40px;color:var(--text-tertiary);">分析中...</div>';
             toolbar.classList.remove('active'); gifBtn.style.display = 'none';
             currentData = null;
             cleanupFramesCache(); // Clean up previous ugoira frames to free memory
+
             try {
-                let id = raw; const match = raw.match(/(?:artworks\/|illust_id=)(\d+)/);
-                if(match) id = match[1]; else if(raw.includes('pximg.net')) { renderDirectImage(raw); return; }
-                
                 const headers = {}; const userCookie = localStorage.getItem('user_cookie');
                 if(userCookie) headers['x-user-cookie'] = userCookie;
                 
-                const res = await fetch(`/analyze/${id}`, { headers });
+                const res = await fetch(`/analyze/${id}`, { headers, signal: activeAbortController.signal });
                 const data = await res.json();
                 if(data.error) throw new Error(data.error);
                 
+                // ⚡ Bolt Optimization: Store in cache for future use
+                ANALYSIS_CACHE.set(id, data);
                 currentData = data; renderContent(data);
             } catch (err) {
+                if (err.name === 'AbortError') return; // Ignore cancelled requests
                 gallery.innerHTML = `<div style="text-align:center;margin-top:40px;color:#ff99a4;">${err.message || '解析失败'}</div>`;
             }
         }
@@ -336,6 +361,7 @@
             loader.classList.add('active');
             
             try {
+                const playbackData = currentData;
                 const frames = await fetchAndUnzipUgoira((loaded, total, stage) => {
                     if(stage === 'download') {
                         if(total > 0) {
@@ -357,6 +383,9 @@
                         txt.innerText = '正在解码帧...';
                     }
                 });
+
+                // ⚡ Bolt Optimization: Don't start playing if user switched artwork during download
+                if (currentData !== playbackData) return;
         
                 const canvas = document.getElementById('ugoiraCanvas');
                 const ctx = canvas.getContext('2d');
@@ -370,6 +399,9 @@
                 
                 let idx = 0;
                 function loop() {
+                    // ⚡ Bolt Optimization: Stop the animation loop if the artwork has changed
+                    if (currentData !== playbackData) return;
+
                     ctx.drawImage(frames[idx].img, 0, 0);
                     idx = (idx + 1) % frames.length;
                     setTimeout(() => requestAnimationFrame(loop), frames[idx].delay);
@@ -496,6 +528,9 @@
         function closeModal(id) { document.getElementById(id).classList.remove('open'); }
         function saveCookie() {
             const val = document.getElementById('cookieInput').value.trim();
+            // ⚡ Bolt Optimization: Clear cache when cookie changes as permissions might change
+            ANALYSIS_CACHE.clear();
+
             if(val) {
                 localStorage.setItem('user_cookie', val);
                 CACHED_COOKIE = val;
