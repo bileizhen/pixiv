@@ -11,3 +11,7 @@
 ## 2025-05-15 - [Early Return for API Parallelism]
 **Learning:** In a serverless environment fetching multiple dependent or independent resources, using `Promise.all` can bottleneck the response by the slowest resource even if it's not needed for the final output. Separating promises and awaiting the "critical path" first allows for early returns, significantly reducing latency for the most common use cases (e.g., single-page vs. multi-page results).
 **Action:** Always evaluate if all resources in a `Promise.all` block are strictly necessary for every response path; implement early return patterns to skip waiting for optional or backgrounded resources.
+
+## 2025-05-16 - [Frontend Metadata Caching]
+**Learning:** In a single-page application where users often toggle between views or revisit items, re-fetching metadata from the backend (even if backend-cached) introduces unnecessary network latency and UI flickering. A simple `Map`-based client-side cache provides a significant "snappiness" boost.
+**Action:** Implement local session caching for stable API responses; ensure cache invalidation triggers on security-relevant state changes (like user cookie updates).

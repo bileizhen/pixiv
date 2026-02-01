@@ -205,6 +205,12 @@
         });
 
         let currentData = null; let framesCache = null; let gifWorkerUrl = null;
+        /**
+         * ⚡ Bolt Optimization: Client-side Metadata Cache
+         * Why: Avoid redundant network requests for previously viewed artworks in the same session.
+         * Impact: Zero-latency rendering for cached items.
+         */
+        const ANALYSIS_CACHE = new Map();
 
         /**
          * 🧹 Cleanup function to revoke ObjectURLs and prevent memory leaks
@@ -233,10 +239,18 @@
             toolbar.classList.remove('active'); gifBtn.style.display = 'none';
             currentData = null;
             cleanupFramesCache(); // Clean up previous ugoira frames to free memory
+
+            let id = raw; const match = raw.match(/(?:artworks\/|illust_id=)(\d+)/);
+            if(match) id = match[1]; else if(raw.includes('pximg.net')) { renderDirectImage(raw); return; }
+
+            // ⚡ Bolt Optimization: Return cached metadata for zero-latency retrieval
+            if (ANALYSIS_CACHE.has(id)) {
+                currentData = ANALYSIS_CACHE.get(id);
+                renderContent(currentData);
+                return;
+            }
+
             try {
-                let id = raw; const match = raw.match(/(?:artworks\/|illust_id=)(\d+)/);
-                if(match) id = match[1]; else if(raw.includes('pximg.net')) { renderDirectImage(raw); return; }
-                
                 const headers = {}; const userCookie = localStorage.getItem('user_cookie');
                 if(userCookie) headers['x-user-cookie'] = userCookie;
                 
@@ -244,6 +258,9 @@
                 const data = await res.json();
                 if(data.error) throw new Error(data.error);
                 
+                // ⚡ Bolt Optimization: Store metadata in cache for future use
+                ANALYSIS_CACHE.set(id, data);
+
                 currentData = data; renderContent(data);
             } catch (err) {
                 gallery.innerHTML = `<div style="text-align:center;margin-top:40px;color:#ff99a4;">${err.message || '解析失败'}</div>`;
@@ -495,6 +512,8 @@
         }
         function closeModal(id) { document.getElementById(id).classList.remove('open'); }
         function saveCookie() {
+            // ⚡ Bolt Optimization: Clear cache when cookie changes to prevent data leakage or stale content results
+            ANALYSIS_CACHE.clear();
             const val = document.getElementById('cookieInput').value.trim();
             if(val) {
                 localStorage.setItem('user_cookie', val);
