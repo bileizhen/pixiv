@@ -191,6 +191,10 @@
         let CACHED_COOKIE = localStorage.getItem('user_cookie');
         let CACHED_TOKEN = CACHED_COOKIE ? encodeURIComponent(CACHED_COOKIE) : null;
 
+        // ⚡ Bolt Optimization: Cache artwork metadata to avoid redundant API calls
+        const ANALYSIS_CACHE = new Map();
+        let currentUgoiraId = 0; // Tracks active ugoira session to terminate orphaned loops
+
         // Wrap main logic in DOMContentLoaded because dependencies are loaded with 'defer'
         document.addEventListener('DOMContentLoaded', () => {
             (function(){
@@ -211,6 +215,8 @@
          * Every time a new artwork is loaded, we must release the memory held by the previous ugoira frames.
          */
         function cleanupFramesCache() {
+            // ⚡ Bolt Optimization: Increment ID to terminate any active requestAnimationFrame loops
+            currentUgoiraId++;
             if (framesCache) {
                 framesCache.forEach(f => {
                     if (f.img && f.img.src && f.img.src.startsWith('blob:')) {
@@ -229,14 +235,24 @@
         // Core Logic
         async function processInput() {
             const raw = input.value.trim(); if(!raw) return;
+
+            // ⚡ Bolt Optimization: Always cleanup previous frames to prevent memory leaks, even on cache hits
+            cleanupFramesCache();
+
+            let id = raw; const match = raw.match(/(?:artworks\/|illust_id=)(\d+)/);
+            if(match) id = match[1]; else if(raw.includes('pximg.net')) { renderDirectImage(raw); return; }
+
+            // ⚡ Bolt Optimization: Return cached metadata for instant preview
+            if (ANALYSIS_CACHE.has(id)) {
+                currentData = ANALYSIS_CACHE.get(id);
+                renderContent(currentData);
+                return;
+            }
+
             gallery.innerHTML = '<div style="text-align:center;margin-top:40px;color:var(--text-tertiary);">分析中...</div>';
             toolbar.classList.remove('active'); gifBtn.style.display = 'none';
             currentData = null;
-            cleanupFramesCache(); // Clean up previous ugoira frames to free memory
             try {
-                let id = raw; const match = raw.match(/(?:artworks\/|illust_id=)(\d+)/);
-                if(match) id = match[1]; else if(raw.includes('pximg.net')) { renderDirectImage(raw); return; }
-                
                 const headers = {}; const userCookie = localStorage.getItem('user_cookie');
                 if(userCookie) headers['x-user-cookie'] = userCookie;
                 
@@ -244,6 +260,12 @@
                 const data = await res.json();
                 if(data.error) throw new Error(data.error);
                 
+                // ⚡ Bolt Optimization: Prevent cache from growing indefinitely
+                if (ANALYSIS_CACHE.size > 50) {
+                    const firstKey = ANALYSIS_CACHE.keys().next().value;
+                    ANALYSIS_CACHE.delete(firstKey);
+                }
+                ANALYSIS_CACHE.set(id, data);
                 currentData = data; renderContent(data);
             } catch (err) {
                 gallery.innerHTML = `<div style="text-align:center;margin-top:40px;color:#ff99a4;">${err.message || '解析失败'}</div>`;
@@ -251,6 +273,8 @@
         }
         
         function renderContent(data) {
+            // ⚡ Bolt Optimization: Increment ID to signal termination of previous animation loops
+            currentUgoiraId++;
             // ⚡ Bolt Optimization: Reset className to prevent layout inheritance from previous renders
             gallery.className = 'gallery-container';
             gallery.innerHTML = ''; toolbar.classList.add('active'); const title = data.title || '无标题';
@@ -329,6 +353,8 @@
         async function playUgoira() {
             if (!currentData || !currentData.isUgoira) return;
             
+            // ⚡ Bolt Optimization: Capture current ugoira session ID
+            const ugoiraId = currentUgoiraId;
             const loader = document.getElementById('loader');
             const fill = document.getElementById('progressFill');
             const txt = document.getElementById('progressText');
@@ -357,6 +383,9 @@
                         txt.innerText = '正在解码帧...';
                     }
                 });
+
+                // ⚡ Bolt Optimization: Avoid rendering if we've switched artworks during unzip
+                if (ugoiraId !== currentUgoiraId) return;
         
                 const canvas = document.getElementById('ugoiraCanvas');
                 const ctx = canvas.getContext('2d');
@@ -370,6 +399,8 @@
                 
                 let idx = 0;
                 function loop() {
+                    // ⚡ Bolt Optimization: Stop the loop if the artwork has changed
+                    if (ugoiraId !== currentUgoiraId) return;
                     ctx.drawImage(frames[idx].img, 0, 0);
                     idx = (idx + 1) % frames.length;
                     setTimeout(() => requestAnimationFrame(loop), frames[idx].delay);
@@ -384,7 +415,9 @@
         }
         // 3. GIF 转换函数 (适配新进度条逻辑)
         async function convertToGif() {
-            if (!currentData.isUgoira) return;
+            if (!currentData || !currentData.isUgoira) return;
+            const ugoiraId = currentUgoiraId;
+            const artworkTitle = currentData.title;
             gifBtn.disabled = true;
             
             const loader = document.getElementById('loader');
@@ -409,6 +442,11 @@
                     }
                 });
                 
+                if (ugoiraId !== currentUgoiraId) {
+                    gifBtn.disabled = false;
+                    return;
+                }
+
                 if(useOverlay) {
                     fill.classList.remove('indeterminate');
                     fill.style.width = '0%';
@@ -425,7 +463,9 @@
                 }
 
                 const gif = new GIF({
-                    workers: 2, quality: 10,
+                    // ⚡ Bolt Optimization: Use multi-core processors for faster GIF encoding
+                    workers: Math.min(4, navigator.hardwareConcurrency || 2),
+                    quality: 10,
                     width: frames[0].img.width, height: frames[0].img.height,
                     workerScript: gifWorkerUrl
                 });
@@ -445,7 +485,7 @@
                 
                 gif.on('finished', blob => {
                     if(useOverlay) loader.classList.remove('active');
-                    saveAs(blob, `Pixiv_GIF_${currentData.title}.gif`);
+                    saveAs(blob, `Pixiv_GIF_${artworkTitle}.gif`);
                     showToast('✅ GIF 导出成功');
                     gifBtn.disabled = false;
                 });
@@ -510,6 +550,8 @@
                 document.getElementById('cookieStatus').style.display='none';
                 showToast('已清除配置');
             }
+            // ⚡ Bolt Optimization: Clear cache when cookies change to prevent data leakage between sessions
+            ANALYSIS_CACHE.clear();
             closeModal('settingsModal');
         }
         function showToast(msg) { const t=document.getElementById('toast'); t.innerText=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),3000); }

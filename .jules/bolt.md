@@ -11,3 +11,7 @@
 ## 2025-05-15 - [Early Return for API Parallelism]
 **Learning:** In a serverless environment fetching multiple dependent or independent resources, using `Promise.all` can bottleneck the response by the slowest resource even if it's not needed for the final output. Separating promises and awaiting the "critical path" first allows for early returns, significantly reducing latency for the most common use cases (e.g., single-page vs. multi-page results).
 **Action:** Always evaluate if all resources in a `Promise.all` block are strictly necessary for every response path; implement early return patterns to skip waiting for optional or backgrounded resources.
+
+## 2025-05-16 - [Frontend Session & Cache Management]
+**Learning:** In a single-page app with high-latency API dependencies (Pixiv), client-side metadata caching is critical for perceived performance, but requires careful lifecycle management. Caching without invalidating on credential changes (Cookies) leads to data leakage, and caching without terminating orphaned background tasks (animations, unzipping) leads to CPU/memory waste when switching artworks rapidly.
+**Action:** Always pair client-side caches with an eviction policy (FIFO/LRU) and a "session ID" mechanism to terminate stale asynchronous operations.
