@@ -11,3 +11,7 @@
 ## 2025-05-15 - [Early Return for API Parallelism]
 **Learning:** In a serverless environment fetching multiple dependent or independent resources, using `Promise.all` can bottleneck the response by the slowest resource even if it's not needed for the final output. Separating promises and awaiting the "critical path" first allows for early returns, significantly reducing latency for the most common use cases (e.g., single-page vs. multi-page results).
 **Action:** Always evaluate if all resources in a `Promise.all` block are strictly necessary for every response path; implement early return patterns to skip waiting for optional or backgrounded resources.
+
+## 2025-05-16 - [Resource Leak in Async Loops]
+**Learning:** In a single-page application where `requestAnimationFrame` or `setTimeout` loops are used for animations (like Ugoira playback), simply clearing the DOM or revoking ObjectURLs does not stop the execution of the loop if it's already scheduled. This leads to orphaned background processes that consume CPU and memory, especially if the user triggers multiple animations in a single session.
+**Action:** Implement a session-based lifecycle tracker (e.g., `currentUgoiraId`) and check it within every iteration of the async loop to ensure it terminates immediately when a new context is established.
