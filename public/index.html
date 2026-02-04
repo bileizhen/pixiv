@@ -205,6 +205,9 @@
         });
 
         let currentData = null; let framesCache = null; let gifWorkerUrl = null;
+        let currentUgoiraId = 0;
+        const ANALYSIS_CACHE = new Map();
+        const MAX_CACHE_SIZE = 50;
 
         /**
          * 🧹 Cleanup function to revoke ObjectURLs and prevent memory leaks
@@ -229,14 +232,27 @@
         // Core Logic
         async function processInput() {
             const raw = input.value.trim(); if(!raw) return;
+
+            // ⚡ Bolt Optimization: Increment ID to terminate any running Ugoira loops/tasks
+            currentUgoiraId++;
+
+            let id = raw; const match = raw.match(/(?:artworks\/|illust_id=)(\d+)/);
+            if(match) id = match[1]; else if(raw.includes('pximg.net')) { renderDirectImage(raw); return; }
+
+            // ⚡ Bolt Optimization: Zero-latency metadata retrieval from client-side cache
+            if (ANALYSIS_CACHE.has(id)) {
+                currentData = ANALYSIS_CACHE.get(id);
+                cleanupFramesCache();
+                renderContent(currentData);
+                return;
+            }
+
             gallery.innerHTML = '<div style="text-align:center;margin-top:40px;color:var(--text-tertiary);">分析中...</div>';
             toolbar.classList.remove('active'); gifBtn.style.display = 'none';
             currentData = null;
             cleanupFramesCache(); // Clean up previous ugoira frames to free memory
+
             try {
-                let id = raw; const match = raw.match(/(?:artworks\/|illust_id=)(\d+)/);
-                if(match) id = match[1]; else if(raw.includes('pximg.net')) { renderDirectImage(raw); return; }
-                
                 const headers = {}; const userCookie = localStorage.getItem('user_cookie');
                 if(userCookie) headers['x-user-cookie'] = userCookie;
                 
@@ -244,6 +260,13 @@
                 const data = await res.json();
                 if(data.error) throw new Error(data.error);
                 
+                // Store in cache with FIFO pruning
+                ANALYSIS_CACHE.set(id, data);
+                if (ANALYSIS_CACHE.size > MAX_CACHE_SIZE) {
+                    const firstKey = ANALYSIS_CACHE.keys().next().value;
+                    ANALYSIS_CACHE.delete(firstKey);
+                }
+
                 currentData = data; renderContent(data);
             } catch (err) {
                 gallery.innerHTML = `<div style="text-align:center;margin-top:40px;color:#ff99a4;">${err.message || '解析失败'}</div>`;
@@ -329,6 +352,9 @@
         async function playUgoira() {
             if (!currentData || !currentData.isUgoira) return;
             
+            // ⚡ Bolt Optimization: Capture current ID to detect if user switched artworks
+            const myUgoiraId = currentUgoiraId;
+
             const loader = document.getElementById('loader');
             const fill = document.getElementById('progressFill');
             const txt = document.getElementById('progressText');
@@ -370,6 +396,8 @@
                 
                 let idx = 0;
                 function loop() {
+                    // ⚡ Bolt Optimization: Terminate orphaned loops from previous artworks
+                    if (myUgoiraId !== currentUgoiraId) return;
                     ctx.drawImage(frames[idx].img, 0, 0);
                     idx = (idx + 1) % frames.length;
                     setTimeout(() => requestAnimationFrame(loop), frames[idx].delay);
@@ -425,7 +453,9 @@
                 }
 
                 const gif = new GIF({
-                    workers: 2, quality: 10,
+                    // ⚡ Bolt Optimization: Use multi-core workers for faster GIF encoding
+                    workers: Math.min(navigator.hardwareConcurrency || 2, 4),
+                    quality: 10,
                     width: frames[0].img.width, height: frames[0].img.height,
                     workerScript: gifWorkerUrl
                 });
@@ -510,6 +540,8 @@
                 document.getElementById('cookieStatus').style.display='none';
                 showToast('已清除配置');
             }
+            // ⚡ Bolt Optimization: Clear cache when cookie changes to prevent stale/incorrect metadata
+            ANALYSIS_CACHE.clear();
             closeModal('settingsModal');
         }
         function showToast(msg) { const t=document.getElementById('toast'); t.innerText=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),3000); }

@@ -11,3 +11,7 @@
 ## 2025-05-15 - [Early Return for API Parallelism]
 **Learning:** In a serverless environment fetching multiple dependent or independent resources, using `Promise.all` can bottleneck the response by the slowest resource even if it's not needed for the final output. Separating promises and awaiting the "critical path" first allows for early returns, significantly reducing latency for the most common use cases (e.g., single-page vs. multi-page results).
 **Action:** Always evaluate if all resources in a `Promise.all` block are strictly necessary for every response path; implement early return patterns to skip waiting for optional or backgrounded resources.
+
+## 2026-02-04 - [Orphaned Async Task Termination]
+**Learning:** In applications with long-running async tasks (like Ugoira frame loops or multi-worker GIF encoding) triggered by user input, simply clearing the UI is insufficient to stop background execution. Revoking ObjectURLs (`cleanupFramesCache`) while a loop is still active can lead to errors or orphaned resource consumption.
+**Action:** Use a monotonically increasing Task ID (`currentUgoiraId`) to tag each new search request. Capture this ID in the closure of async tasks and periodically verify it against the global ID to safely terminate orphaned operations.
