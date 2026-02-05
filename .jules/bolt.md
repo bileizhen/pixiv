@@ -11,3 +11,7 @@
 ## 2025-05-15 - [Early Return for API Parallelism]
 **Learning:** In a serverless environment fetching multiple dependent or independent resources, using `Promise.all` can bottleneck the response by the slowest resource even if it's not needed for the final output. Separating promises and awaiting the "critical path" first allows for early returns, significantly reducing latency for the most common use cases (e.g., single-page vs. multi-page results).
 **Action:** Always evaluate if all resources in a `Promise.all` block are strictly necessary for every response path; implement early return patterns to skip waiting for optional or backgrounded resources.
+
+## 2026-02-05 - [Orphaned Async Task Management]
+**Learning:** In applications with long-running asynchronous tasks (like Ugoira playback or multi-worker GIF generation) triggered by user input, subsequent inputs can create "zombie" tasks that consume CPU, memory, and may cause UI glitches. Simply clearing the UI is insufficient if the underlying closures (e.g., `requestAnimationFrame` or `gif.on('finished')`) are still active.
+**Action:** Implement a monotonic ID counter (`currentTaskId`) that is incremented on every new input. Capture the ID at the start of async tasks and verify it before every significant step (drawing a frame, processing a callback, or committing a result) to safely abort stale operations.
