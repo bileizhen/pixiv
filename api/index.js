@@ -1,4 +1,3 @@
-// api/index.js
 export const config = { runtime: 'edge' };
 
 export default async function handler(request) {
@@ -6,7 +5,7 @@ export default async function handler(request) {
   const path = url.pathname;
 
   if (path === '/' || path === '/favicon.ico') {
-    return new Response('Pixiv Proxy (Edge) is running.', { status: 200 });
+    return new Response('Pixiv Mirror (Edge) is running.', { status: 200 });
   }
 
   // 移除 token 参数，拼接真实 Pixiv URL
@@ -55,6 +54,6 @@ export default async function handler(request) {
     return new Response(response.body, { status: response.status, headers: newHeaders });
 
   } catch (err) {
-    return new Response(`Proxy Error: ${err.message}`, { status: 500 });
+    return new Response(`Mirror Error: ${err.message}`, { status: 500 });
   }
 }

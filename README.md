@@ -1,11 +1,11 @@
-# 🎨 Pixiv Proxy Pro (Fluent Design)
+# 🎨 Pixiv Mirror Pro (Fluent Design)
 
 <div align="center">
 <img src="https://github.com/bileizhen/pixiv/raw/main/PixPin_2026-01-02_01-32-07.png" alt="图片alt" title="图片title">  
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fbileizhen%2Fpixiv)
 
-**基于 Vercel Edge Runtime 的现代化 Pixiv 反向代理服务**
+**基于 Vercel Edge Runtime 的现代化 Pixiv 第三方镜像站**
 
 [特性](#-特性) • [部署教程](#-部署教程) • [R-18 配置](#-r-18-及高级配置) • [免责声明](#-免责声明)
 
@@ -13,14 +13,14 @@
 
 ## 📖 简介
 
-这是一个运行在 Vercel 上的 Pixiv 图片反向代理服务。不同于普通的 Nginx 转发，本项目提供了一个**全功能的 Fluent Design 2.0 前端界面**，支持智能解析 Pixiv 作品链接，查看高清原图、播放/下载动图（Ugoira），并支持导出 GIF。
+这是一个运行在 Vercel 上的 Pixiv 图片第三方镜像站。不同于普通的 Nginx 转发，本项目提供了一个**全功能的 Fluent Design 2.0 前端界面**，支持智能解析 Pixiv 作品链接，查看高清原图、播放/下载动图（Ugoira），并支持导出 GIF。
 
 后端采用 **Edge Runtime** 构建，彻底突破 Vercel 普通函数的 4.5MB 响应限制，支持超大动图和 ZIP 包的流式传输。
 
 ## ✨ 特性
 
 - 🎨 **Fluent Design 2.0 UI**：采用 Windows 11 设计语言，支持 Mica 材质背景、亚克力模糊与微交互动画。
-- ⚡ **Edge Runtime 内核**：支持流式传输（Streaming），无视 4.5MB 限制，轻松代理 100MB+ 的动图资源。
+- ⚡ **Edge Runtime 内核**：支持流式传输（Streaming），无视 4.5MB 限制，轻松镜像 100MB+ 的动图资源。
 - 🎬 **Ugoira 动图增强**：
   - 在线播放：前端自动下载 ZIP 并解码播放。
   - **导出 GIF**：利用 Web Worker 多线程将动图转为 GIF 下载。
@@ -53,7 +53,7 @@
 
 ## ⚙️ R-18 及高级配置
 
-默认情况下，由于 Pixiv 的限制，游客无法查看 R-18 内容。您需要提供一个已登录账号的 Cookie。本服务支持两种方式配置 Cookie：
+默认情况下，由于 Pixiv 的限制，游客无法查看 R-18 内容。您需要提供一个已登录账号的 Cookie。本镜像站支持两种方式配置 Cookie：
 
 ### 方式 A：前端自定义 (推荐，最灵活)
 
@@ -87,7 +87,7 @@
 ```text
 .
 ├── api/
-│   ├── index.js        # [核心] 图片代理接口 (Edge Runtime)，处理大文件下载
+│   ├── index.js        # [核心] 图片镜像接口 (Edge Runtime)，处理大文件下载
 │   └── analyze.js      # [核心] 信息解析接口 (Node.js)，处理元数据和 Cookie 逻辑
 ├── public/
 │   └── index.html      # 前端单页应用 (Fluent Design + JSZip + Gif.js)
@@ -112,7 +112,7 @@
 ## ⚖️ 免责声明
 
 1. 本项目仅供技术研究和学习交流使用。
-2. 本项目**不存储**任何图片数据，所有流量均为实时转发。
+2. 本项目**不存储**任何图片数据，所有流量均为实时镜像转发。
 3. 使用本服务访问的内容版权归 Pixiv 及原作者所有。
 4. 请勿将本服务用于商业用途或大规模爬虫采集，由此产生的任何法律责任由使用者自行承担。
 5. 请自觉遵守当地法律法规。

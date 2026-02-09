@@ -5,6 +5,14 @@
       "destination": "/api/analyze.js"
     },
     {
+      "source": "/ranking",
+      "destination": "/api/ranking.js"
+    },
+    {
+      "source": "/search",
+      "destination": "/api/search.js"
+    },
+    {
       "source": "/(.*)",
       "destination": "/api/index.js"
     }
