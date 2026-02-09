@@ -51,9 +51,10 @@ export default async function handler(req, res) {
              }));
         }
     } else {
-        // Recommendation Mode (R18) - Use top/illust for better data (stats)
-        // ajax/discovery/artworks often lacks stats. ajax/top/illust is the home feed.
-        const targetUrl = `https://www.pixiv.net/ajax/top/illust?mode=r18&limit=${limit}&lang=zh`;
+        // Recommendation Mode (R18) - Back to Discovery for randomness
+        // top/illust is too static. discovery provides random recommendations.
+        // We append a timestamp to avoid upstream caching.
+        const targetUrl = `https://www.pixiv.net/ajax/discovery/artworks?mode=r18&limit=${limit}&lang=zh&_t=${Date.now()}`;
         const resp = await fetch(targetUrl, { headers, dispatcher });
         const data = await resp.json();
         if (data.body && data.body.thumbnails && data.body.thumbnails.illust) {
@@ -93,7 +94,13 @@ export default async function handler(req, res) {
     // let's stick to the safe URL but maybe we can use a proxy trick if needed.
     // For now, return as is.
 
-    res.setHeader('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=30');
+    // Disable cache for Discovery mode to ensure freshness
+    if (!hasPositiveTags) {
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    } else {
+        res.setHeader('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=30');
+    }
+    
     return res.status(200).json({ items });
 
   } catch (error) {
