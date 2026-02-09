@@ -1,4 +1,6 @@
 
+import { ProxyAgent } from 'undici';
+
 export default async function handler(req, res) {
   const { word, p = 1 } = req.query;
   if (!word) return res.status(400).json({ error: 'Missing search word' });
@@ -18,12 +20,15 @@ export default async function handler(req, res) {
     headers['Cookie'] = `PHPSESSID=${process.env.PIXIV_PHPSESSID}`;
   }
 
+  // Proxy Configuration
+  const dispatcher = process.env.HTTPS_PROXY ? new ProxyAgent(process.env.HTTPS_PROXY) : undefined;
+
   try {
     // Pixiv Search API (AJAX)
     const encodedWord = encodeURIComponent(word);
     const targetUrl = `https://www.pixiv.net/ajax/search/artworks/${encodedWord}?word=${encodedWord}&p=${p}&order=date_d&mode=all&s_mode=s_tag`;
     
-    const response = await fetch(targetUrl, { headers });
+    const response = await fetch(targetUrl, { headers, dispatcher });
     if (!response.ok) return res.status(response.status).json({ error: 'Failed to fetch search results' });
 
     const data = await response.json();
@@ -41,6 +46,7 @@ export default async function handler(req, res) {
       tags: item.tags,
       url: item.url, // Thumbnail
       isR18: item.xRestrict > 0,
+      isUgoira: item.illustType === 2,
       pageCount: item.pageCount
     }));
 

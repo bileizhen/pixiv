@@ -1,0 +1,17 @@
+{
+  "name": "pixiv-mirror",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "vercel dev",
+    "dev:proxy": "cross-env HTTPS_PROXY=http://127.0.0.1:7897 vercel dev",
+    "deploy": "vercel deploy --prod"
+  },
+  "devDependencies": {
+    "cross-env": "^10.1.0",
+    "vercel": "latest"
+  },
+  "dependencies": {
+    "undici": "^7.21.0"
+  }
+}

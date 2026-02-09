@@ -9,6 +9,7 @@
     <script defer crossorigin="anonymous" src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script defer crossorigin="anonymous" src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <script defer crossorigin="anonymous" src="https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js"></script>
+    <script defer crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 
     <style>
         :root {
@@ -16,6 +17,307 @@
             --surface-stroke: rgba(255, 255, 255, 0.08); --accent-default: #60cdff; --accent-hover: #7aceff;
             --text-primary: #ffffff; --text-secondary: rgba(255, 255, 255, 0.7); --text-tertiary: rgba(255, 255, 255, 0.5);
             --ease-fluent: cubic-bezier(0.1, 0.9, 0.2, 1); --r-md: 8px; --r-lg: 12px; --r-xl: 18px;
+        }
+
+        /* Deer Mode Feed Styles */
+        .deer-layout {
+            width: 100%;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 16px;
+        }
+        
+        .deer-masonry {
+            column-count: 2;
+            column-gap: 24px;
+        }
+        
+        /* Deer Mode Theme - Dark Pink Transparent */
+        body.deer-mode-active {
+            --bg-base: #22181c;
+            --surface-card: rgba(50, 30, 40, 0.6);
+            --surface-flyout: #2d1f26;
+            --surface-stroke: rgba(255, 105, 180, 0.15);
+            --text-primary: #ffeef4;
+            --text-secondary: rgba(255, 230, 240, 0.7);
+            --text-tertiary: rgba(255, 200, 220, 0.5);
+            --accent-default: #ff4081;
+            --accent-hover: #f50057;
+        }
+        
+        body.deer-mode-active #bg-overlay {
+            background: linear-gradient(180deg, rgba(35, 20, 25, 0.7) 0%, rgba(35, 20, 25, 0.9) 100%);
+        }
+
+        body.deer-mode-active .deer-tag {
+            background: rgba(255, 64, 129, 0.15);
+            color: #ff80ab;
+        }
+        body.deer-mode-active .deer-tag:hover {
+            background: rgba(255, 64, 129, 0.25);
+            color: #ff4081;
+        }
+        
+        body.deer-mode-active header {
+            background: rgba(35, 20, 25, 0.8);
+            border-bottom-color: var(--surface-stroke);
+        }
+        
+        body.deer-mode-active .search-bar input {
+            background: rgba(0, 0, 0, 0.3);
+            border-color: var(--surface-stroke);
+            color: var(--text-primary);
+        }
+        body.deer-mode-active .search-bar input::placeholder {
+            color: var(--text-tertiary);
+        }
+        
+        body.deer-mode-active .icon-btn {
+            color: var(--text-secondary);
+        }
+        body.deer-mode-active .icon-btn:hover {
+            background: rgba(255, 64, 129, 0.15);
+            color: var(--text-primary);
+        }
+
+        @media (max-width: 700px) {
+            .deer-masonry {
+                column-count: 1;
+            }
+            .brand {
+                display: none !important;
+            }
+            .search-bar {
+                margin: 0 12px 0 0;
+            }
+            header {
+                padding: 0 16px;
+            }
+            .deer-settings-island {
+                bottom: 80px; /* Avoid overlap with bottom toolbar if any */
+            }
+        }
+
+        .deer-card {
+            break-inside: avoid; /* Prevent card from splitting across columns */
+            background: var(--surface-card);
+            border: 1px solid var(--surface-stroke);
+            border-radius: var(--r-lg);
+            overflow: hidden;
+            margin-bottom: 24px;
+            animation: slideUp 0.5s var(--ease-fluent) forwards;
+            opacity: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .deer-header {
+            padding: 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(0,0,0,0.2);
+        }
+        .deer-avatar { width: 32px; height: 32px; border-radius: 50%; overflow: hidden; }
+        .deer-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .deer-name { font-size: 0.9rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px; }
+        .deer-stats { display: flex; align-items: center; gap: 8px; font-size: 0.75rem; color: var(--text-tertiary); margin-left: auto; }
+        .deer-stat-item { display: flex; align-items: center; gap: 3px; }
+        .deer-stat-item svg { width: 12px; height: 12px; opacity: 0.8; }
+
+        .deer-image {
+            width: 100%;
+            display: block;
+            min-height: 200px;
+            background: #000;
+            cursor: pointer;
+            position: relative;
+        }
+        .deer-image img {
+            width: 100%;
+            height: auto;
+            display: block;
+            transition: opacity 0.3s;
+        }
+
+        .deer-tags {
+            padding: 8px 12px 12px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .deer-tag {
+            font-size: 0.75rem;
+            color: var(--text-tertiary);
+            background: rgba(255,255,255,0.05);
+            padding: 2px 8px;
+            border-radius: 4px;
+            text-decoration: none;
+            transition: 0.2s;
+        }
+        .deer-tag:hover {
+            color: var(--accent-default);
+            background: rgba(96,205,255,0.15);
+        }
+
+        .deer-settings-island {
+            position: fixed;
+            bottom: 30px;
+            left: 30px;
+            width: 44px;
+            height: 44px;
+            background: rgba(40, 24, 32, 0.85);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 105, 180, 0.3);
+            border-radius: 22px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            z-index: 900;
+            transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+            overflow: hidden;
+            color: #ffeef4;
+        }
+        
+        .deer-settings-island.expanded {
+            width: 320px;
+            height: 420px;
+            border-radius: 24px;
+            background: #251820;
+            border-color: #ff4081;
+        }
+
+        .deer-island-icon {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: opacity 0.2s;
+            z-index: 2;
+        }
+        .deer-island-icon svg { width: 20px; height: 20px; stroke: #ff80ab; }
+        .deer-settings-island.expanded .deer-island-icon {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .deer-island-content {
+            opacity: 0;
+            pointer-events: none;
+            padding: 24px;
+            width: 320px;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            transition: opacity 0.3s 0.1s;
+            box-sizing: border-box;
+        }
+        .deer-settings-island.expanded .deer-island-content {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .tag-input-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 12px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 105, 180, 0.2);
+            min-height: 80px;
+            align-content: flex-start;
+        }
+        .tag-chip {
+            background: rgba(255, 64, 129, 0.15);
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            transition: 0.2s;
+            user-select: none;
+            color: #ff80ab;
+            font-weight: 500;
+        }
+        .tag-chip:hover {
+            background: rgba(255, 64, 129, 0.3);
+            color: #ff4081;
+            text-decoration: line-through;
+        }
+        .add-tag-btn {
+            background: transparent;
+            border: 1px dashed rgba(255, 105, 180, 0.4);
+            color: rgba(255, 105, 180, 0.7);
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: 0.2s;
+            min-width: 32px;
+        }
+        .add-tag-btn:hover {
+            border-color: #ff4081;
+            color: #ff4081;
+            background: rgba(255, 64, 129, 0.1);
+        }
+        .tag-edit-input {
+            background: transparent;
+            border: none;
+            border-bottom: 1px solid #ff4081;
+            color: #ffeef4;
+            font-size: 0.85rem;
+            width: 80px;
+            padding: 4px 0;
+            outline: none;
+        }
+
+        /* Hide standard feed styles if not used elsewhere, or keep for safety */
+        .feed-column { width: 100%; }
+        .sidebar-column { display: none; }
+        
+        /* Sidebar Components */
+        .sidebar-card {
+            background: var(--surface-card);
+            border: 1px solid var(--surface-stroke);
+            border-radius: var(--r-lg);
+            padding: 16px;
+        }
+        .sidebar-title {
+            font-weight: bold;
+            font-size: 1.1rem;
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--surface-stroke);
+        }
+        .user-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+        .user-row:last-child { margin-bottom: 0; }
+        .user-row-avatar { width: 48px; height: 48px; border-radius: 50%; background: var(--surface-stroke); overflow: hidden; }
+        .user-row-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .user-row-info { flex: 1; min-width: 0; }
+        .user-row-name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .follow-btn {
+            background: var(--accent-default);
+            color: #000;
+            border: none;
+            border-radius: 20px;
+            padding: 4px 12px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            cursor: pointer;
         }
 
         * { box-sizing: border-box; outline: none; -webkit-tap-highlight-color: transparent; }
@@ -46,36 +348,124 @@
         .back-btn { display: none; width: 32px; height: 32px; border-radius: 50%; background: rgba(255,255,255,0.1); border: none; color: #fff; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s; }
         .back-btn:hover { background: rgba(255,255,255,0.2); }
 
-        /* Grid View */
-        .grid-view { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; width: 100%; }
-        .art-card { background: var(--surface-card); border-radius: var(--r-lg); overflow: hidden; position: relative; aspect-ratio: 1 / 1; cursor: pointer; border: 1px solid var(--surface-stroke); transition: 0.2s var(--ease-fluent); opacity: 0; animation: slideUp 0.5s var(--ease-fluent) forwards; }
-        .art-card:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(0,0,0,0.3); z-index: 1; }
-        .art-card img { width: 100%; height: 100%; object-fit: cover; transition: 0.3s; }
-        .art-card .meta { position: absolute; bottom: 0; left: 0; right: 0; padding: 40px 12px 12px; background: linear-gradient(to top, rgba(0,0,0,0.8), transparent); color: #fff; opacity: 0; transition: 0.2s; }
-        .art-card:hover .meta { opacity: 1; }
-        .art-title { font-size: 0.9rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .art-user { font-size: 0.8rem; color: var(--text-secondary); margin-top: 2px; }
-        .r18-badge { position: absolute; top: 8px; right: 8px; background: #ff4757; color: #fff; font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
-        .page-badge { position: absolute; top: 8px; left: 8px; background: rgba(0,0,0,0.6); color: #fff; font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; display: flex; align-items: center; gap: 4px; }
+        /* Filter Tabs */
+        .filter-tabs { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; padding-bottom: 12px; border-bottom: 1px solid var(--surface-stroke); animation: fadeIn 0.5s var(--ease-fluent); }
+        .type-switch, .rating-switch { display: flex; background: rgba(255,255,255,0.05); padding: 4px; border-radius: 20px; }
+        .type-switch span, .rating-switch span { padding: 6px 16px; border-radius: 16px; cursor: pointer; font-size: 0.9rem; transition: 0.2s; color: var(--text-secondary); }
+        .type-switch span.active, .rating-switch span.active { background: var(--surface-flyout); color: var(--text-primary); font-weight: 600; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+        .type-switch span:hover, .rating-switch span:hover { color: var(--text-primary); }
+        
+        /* Grid View - Standard Grid Layout */
+        .grid-view { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 24px 16px; width: 100%; }
+        
+        .art-card { 
+            background: transparent; 
+            overflow: visible; 
+            position: relative; 
+            cursor: pointer; 
+            transition: 0.2s var(--ease-fluent); 
+            opacity: 0; 
+            animation: slideUp 0.5s var(--ease-fluent) forwards; 
+            border: none;
+            box-shadow: none;
+        }
+        .art-card:hover { transform: translateY(-2px); }
+        
+        .art-cover {
+            position: relative;
+            aspect-ratio: 1 / 1;
+            border-radius: var(--r-lg);
+            overflow: hidden;
+            margin-bottom: 10px;
+            background: var(--surface-card);
+            border: 1px solid var(--surface-stroke);
+        }
+        .art-cover img { width: 100%; height: 100%; object-fit: cover; transition: 0.3s; }
+        .art-cover:hover img { transform: scale(1.05); }
+        
+        .art-meta-row { display: flex; flex-direction: column; gap: 4px; }
+        .art-title { font-size: 0.95rem; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.4; }
+        .art-title:hover { color: var(--accent-default); text-decoration: underline; }
+        
+        .art-author { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+        .author-avatar { width: 24px; height: 24px; border-radius: 50%; overflow: hidden; flex-shrink: 0; background: var(--surface-stroke); }
+        .author-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .author-name { font-size: 0.85rem; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .author-name:hover { color: var(--text-primary); }
+
+        .r18-badge { 
+            position: absolute; 
+            top: 6px; 
+            right: 6px; 
+            background: #ff4060; 
+            color: #fff; 
+            font-size: 0.7rem; 
+            padding: 2px 6px; 
+            border-radius: 4px; 
+            font-weight: bold; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.2);
+            backdrop-filter: none;
+        }
+        .page-badge, .ugoira-badge { position: absolute; top: 8px; left: 8px; background: rgba(0,0,0,0.6); color: #fff; font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; display: flex; align-items: center; gap: 4px; backdrop-filter: blur(4px); }
+        .ugoira-badge { background: rgba(96, 205, 255, 0.8); } /* Accent color for Ugoira */
 
         /* Detail View */
-        .detail-container { display: none; width: 100%; max-width: 1000px; margin: 0 auto; animation: fadeIn 0.3s; }
-        .detail-header { margin-bottom: 20px; }
-        .detail-title { font-size: 1.8rem; font-weight: 600; margin-bottom: 8px; }
-        .detail-meta { color: var(--text-secondary); display: flex; gap: 16px; align-items: center; }
-        .tag-pill { background: rgba(255,255,255,0.1); padding: 4px 12px; border-radius: 16px; font-size: 0.85rem; cursor: pointer; transition: 0.2s; }
-        .tag-pill:hover { background: rgba(96,205,255,0.2); color: var(--accent-default); }
+        .detail-container { display: none; width: 100%; max-width: 1400px; margin: 0 auto; animation: fadeIn 0.3s; display: flex; gap: 40px; align-items: flex-start; }
+        @media (max-width: 1000px) { .detail-container { flex-direction: column; } }
+        
+        .detail-left { flex: 1; width: 100%; min-width: 0; } /* Image Area */
+        .detail-right { width: 360px; flex-shrink: 0; position: sticky; top: 80px; display: flex; flex-direction: column; gap: 24px; } /* Info Area */
+        @media (max-width: 1000px) { .detail-right { width: 100%; position: static; } }
 
         .image-list { display: flex; flex-direction: column; gap: 24px; align-items: center; }
         .image-item { max-width: 100%; border-radius: var(--r-lg); box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
-        
+
         /* Ugoira Player (Reused) */
-        .ugoira-container { position: relative; max-width: 100%; border-radius: var(--r-lg); overflow: hidden; }
+        .ugoira-container { position: relative; width: 100%; border-radius: var(--r-lg); overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
         .play-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.2); transition: 0.3s; cursor: pointer; }
         .play-overlay:hover { background: rgba(0,0,0,0.4); }
         .play-btn-circle { width: 72px; height: 72px; border-radius: 50%; background: rgba(255,255,255,0.15); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.3); display: flex; align-items: center; justify-content: center; transition: 0.3s; }
         .play-overlay:hover .play-btn-circle { transform: scale(1.1); background: var(--accent-default); }
         .play-btn-circle svg { width: 32px; height: 32px; fill: #fff; margin-left: 4px; }
+
+        /* Detail Right Side Components */
+        .info-card { background: var(--surface-card); border: 1px solid var(--surface-stroke); border-radius: var(--r-lg); padding: 24px; }
+        
+        .work-title { font-size: 1.5rem; font-weight: bold; line-height: 1.4; margin-bottom: 8px; color: var(--text-primary); }
+        .work-stats { display: flex; gap: 16px; margin-bottom: 16px; color: var(--text-secondary); font-size: 0.9rem; }
+        .stat-item { display: flex; align-items: center; gap: 4px; }
+        .stat-item svg { width: 16px; height: 16px; }
+
+        .author-section { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; text-decoration: none; color: inherit; transition: 0.2s; }
+        .author-section:hover { opacity: 0.8; }
+        .author-avatar-lg { width: 48px; height: 48px; border-radius: 50%; overflow: hidden; background: var(--surface-stroke); }
+        .author-avatar-lg img { width: 100%; height: 100%; object-fit: cover; }
+        .author-info { display: flex; flex-direction: column; }
+        .author-name-lg { font-weight: 600; font-size: 1.1rem; }
+        .author-id { font-size: 0.85rem; color: var(--text-tertiary); }
+
+        .tag-list { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+        .tag-pill { background: rgba(255,255,255,0.08); padding: 6px 12px; border-radius: 20px; font-size: 0.9rem; cursor: pointer; transition: 0.2s; color: var(--text-secondary); text-decoration: none; }
+        .tag-pill:hover { background: rgba(96,205,255,0.15); color: var(--accent-default); }
+
+        .work-desc { font-size: 0.95rem; line-height: 1.6; color: var(--text-secondary); white-space: pre-wrap; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--surface-stroke); }
+        .work-desc a { color: var(--accent-default); text-decoration: none; }
+        .work-desc a:hover { text-decoration: underline; }
+
+        .action-bar { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 24px; }
+        .action-btn { background: var(--surface-flyout); border: 1px solid var(--surface-stroke); color: #fff; padding: 10px; border-radius: var(--r-md); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 600; transition: 0.2s; }
+        .action-btn:hover { background: rgba(255,255,255,0.1); }
+        .action-btn.primary { background: var(--accent-default); color: #000; border-color: transparent; }
+        .action-btn.primary:hover { background: var(--accent-hover); }
+
+        .rec-title { margin-top: 24px; font-weight: 600; font-size: 0.95rem; color: var(--text-primary); margin-bottom: 12px; border-top: 1px solid var(--surface-stroke); padding-top: 24px; }
+        .rec-list { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+        .rec-item { display: block; aspect-ratio: 1; border-radius: var(--r-md); overflow: hidden; position: relative; border: 1px solid var(--surface-stroke); background: var(--surface-stroke); }
+        .rec-item img { width: 100%; height: 100%; object-fit: cover; transition: 0.3s; }
+        .rec-item:hover img { transform: scale(1.1); }
+
+        .meta-info { margin-top: 16px; font-size: 0.85rem; color: var(--text-tertiary); display: flex; justify-content: space-between; }
         
         /* Toolbar */
         .toolbar { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: rgba(40,40,40,0.9); backdrop-filter: blur(20px); border: 1px solid var(--surface-stroke); padding: 8px 16px; border-radius: 32px; display: flex; gap: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.4); z-index: 500; opacity: 0; pointer-events: none; transition: 0.3s; }
@@ -106,6 +496,38 @@
         textarea.code-input { width: 100%; height: 120px; background: rgba(0,0,0,0.3); border: 1px solid var(--surface-stroke); border-radius: var(--r-md); color: #fff; padding: 12px; font-family: monospace; font-size: 0.85rem; resize: vertical; margin-top: 10px; }
         .toast { position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%) translateY(20px); background: #333; border: 1px solid var(--surface-stroke); padding: 10px 24px; border-radius: 24px; font-size: 0.95rem; box-shadow: 0 8px 24px rgba(0,0,0,0.4); opacity: 0; pointer-events: none; transition: 0.4s var(--ease-fluent); z-index: 3000; }
         .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+        /* Novel Card Styles */
+        .novel-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 24px; }
+        .novel-card {
+            display: flex;
+            gap: 16px;
+            background: transparent;
+            padding: 0;
+            transition: 0.2s;
+            cursor: pointer;
+            text-decoration: none;
+            color: inherit;
+            position: relative;
+            animation: slideUp 0.5s var(--ease-fluent) forwards;
+            opacity: 0;
+        }
+        .novel-card:hover .novel-info { border-bottom-color: var(--accent-default); }
+        .novel-cover { width: 96px; height: 136px; border-radius: 6px; overflow: hidden; flex-shrink: 0; position: relative; background: var(--surface-stroke); box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
+        .novel-cover img { width: 100%; height: 100%; object-fit: cover; }
+        .novel-info { flex: 1; min-width: 0; display: flex; flex-direction: column; padding-bottom: 16px; border-bottom: 1px solid var(--surface-stroke); position: relative; }
+        .novel-title { font-weight: bold; font-size: 1.05rem; color: var(--text-primary); margin-bottom: 4px; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .novel-series { font-size: 0.85rem; color: var(--accent-default); margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .novel-author { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 8px; }
+        .novel-author img { width: 20px; height: 20px; border-radius: 50%; }
+        .novel-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; height: 20px; overflow: hidden; }
+        .novel-tag { color: var(--accent-default); font-size: 0.8rem; white-space: nowrap; text-decoration: none; }
+        .novel-tag:hover { text-decoration: underline; }
+        .novel-desc { font-size: 0.85rem; color: var(--text-secondary); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.6; margin-bottom: 12px; }
+        .novel-meta { display: flex; gap: 16px; font-size: 0.8rem; color: var(--text-tertiary); margin-top: auto; align-items: center; }
+        .novel-meta span { display: flex; align-items: center; gap: 4px; }
+        .bookmark-icon { margin-left: auto; color: var(--text-tertiary); transition: 0.2s; }
+        .bookmark-icon:hover { color: #ff4060; }
     </style>
 </head>
 <body>
@@ -124,6 +546,7 @@
         </div>
         <div class="header-actions">
             <button class="icon-btn" onclick="openModal('aboutModal')"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg></button>
+            <button class="icon-btn" id="deerBtn" style="display:none;" onclick="loadDeerView()">🦌</button>
             <button class="icon-btn" onclick="openModal('settingsModal')"><div class="status-dot" id="cookieStatus"></div><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 1 0 10 10 4 4 0 0 1-5-5 4 4 0 0 1-5-5"></path><path d="M8.5 8.5v.01"></path><path d="M16 15.5v.01"></path><path d="M12 12v.01"></path><path d="M11 17v.01"></path><path d="M7 14v.01"></path></svg></button>
             <a href="https://github.com/bileizhen/pixiv" target="_blank" class="icon-btn"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg></a>
         </div>
@@ -135,18 +558,61 @@
 
     <!-- Toolbar for Detail View -->
     <div class="toolbar" id="detailToolbar">
-        <button class="tool-btn" id="dlBtn" onclick="downloadHandler()">📥 下载 ZIP</button>
         <button class="tool-btn" id="gifBtn" style="display:none" onclick="convertToGif()">🎬 导出 GIF</button>
         <button class="tool-btn" onclick="goBack()">🔙 返回</button>
     </div>
 
     <!-- Modals -->
+    <div class="dialog-backdrop" id="loginModal" style="z-index: 3000;">
+        <div class="dialog-card" style="text-align: center; max-width: 400px;">
+            <div style="margin-bottom: 20px;">
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#60cdff" stroke-width="2" style="margin-bottom: 16px;"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                <h2 style="margin: 0; font-size: 1.5rem;">欢迎使用 Pixiv Mirror</h2>
+                <p style="color: var(--text-secondary); margin-top: 8px; font-size: 0.95rem;">请选择您的登录方式以继续</p>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+                <button class="dialog-btn primary" onclick="showCookieInput()" style="padding: 12px; font-size: 1rem;">
+                    🔑 使用 Cookie / Token 登录
+                    <div style="font-size: 0.75rem; opacity: 0.8; font-weight: normal;">推荐，解锁 R-18 与完整功能</div>
+                </button>
+                
+                <a href="https://accounts.pixiv.net/login" target="_blank" class="dialog-btn" style="padding: 12px; font-size: 1rem; text-decoration: none; display: block; line-height: 1.4;">
+                    🔗 前往 Pixiv 官网登录
+                    <div style="font-size: 0.75rem; opacity: 0.6; font-weight: normal;">登录后请复制 Cookie 回来填入</div>
+                </a>
+
+                <button class="dialog-btn" onclick="handleGuest()" style="padding: 12px; font-size: 0.95rem; background: transparent; border: 1px solid var(--surface-stroke);">
+                    👻 游客访问 (跳过)
+                </button>
+            </div>
+        </div>
+    </div>
+
     <div class="dialog-backdrop" id="settingsModal" onclick="if(event.target===this)closeModal('settingsModal')"><div class="dialog-card"><div class="dialog-header">自定义 Cookie</div><div class="dialog-body"><p>如需访问 R-18 内容或查看更多搜索结果，请在此填入已登录 Pixiv 账号的完整 Cookie。</p><textarea class="code-input" id="cookieInput" placeholder="first_visit_datetime_pc=...; PHPSESSID=..."></textarea></div><div class="dialog-footer"><button class="dialog-btn" onclick="closeModal('settingsModal')">取消</button><button class="dialog-btn primary" onclick="saveCookie()">保存配置</button></div></div></div>
+    
+    <!-- Deer Mode Auth Modal -->
+    <div class="dialog-backdrop" id="deerAuthModal">
+        <div class="dialog-card" style="max-width: 360px; text-align: center;">
+            <div style="font-size: 3rem; margin-bottom: 16px;">🦌</div>
+            <div class="dialog-header" style="text-align: center;">DEER MODE LOCKED</div>
+            <div class="dialog-body">
+                <input type="password" id="deerPassword" class="code-input" style="height: 48px; text-align: center; font-size: 1.2rem; letter-spacing: 4px;" placeholder="ENTER PASSWORD">
+            </div>
+            <div class="dialog-footer" style="justify-content: center; margin-top: 24px;">
+                <button class="dialog-btn" onclick="closeModal('deerAuthModal')">ABORT</button>
+                <button class="dialog-btn primary" onclick="verifyDeer()">ACCESS</button>
+            </div>
+        </div>
+    </div>
+
     <div class="dialog-backdrop" id="aboutModal" onclick="if(event.target===this)closeModal('aboutModal')"><div class="dialog-card"><div class="dialog-header">关于 Pixiv Mirror</div><div class="dialog-body"><p><strong>Pixiv Mirror (Edge Edition)</strong><br>一个现代化的 Pixiv 第三方镜像站，支持浏览、搜索、动图播放与下载。</p><hr style="border:0; border-top:1px solid var(--surface-stroke); margin:15px 0;"><p style="font-size:0.85rem; color:#aaa;"><strong>⚠️ 免责声明：</strong><br>1. 本项目仅供学习与技术交流使用，不存储任何图片数据。<br>2. 本服务不隶属于 Pixiv Inc.，内容版权归原作者所有。<br>3. 请勿将本服务用于商业用途或大规模采集。<br>4. 用户需自行承担配置自定义 Cookie 所带来的账号风险。</p></div><div class="dialog-footer"><button class="dialog-btn primary" onclick="closeModal('aboutModal')">我已知晓</button></div></div></div>
     <div class="toast" id="toast"></div>
 
     <script>
-        const CACHED_ORIGIN = window.location.origin;
+        const CACHED_ORIGIN = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') 
+            ? 'https://pixiv.bileizhen.top' 
+            : window.location.origin;
         let CACHED_COOKIE = localStorage.getItem('user_cookie');
         let CACHED_TOKEN = CACHED_COOKIE ? encodeURIComponent(CACHED_COOKIE) : null;
         
@@ -155,20 +621,59 @@
         let currentDetail = null;
         let framesCache = null;
 
+        let currentMode = 'all'; // all, safe, r18
+        let currentCategory = 'illust'; // illust, novel
+
         document.addEventListener('DOMContentLoaded', () => {
             initBackground();
-            if(CACHED_COOKIE) document.getElementById('cookieStatus').style.display = 'block';
             
+            // Check Login Status
+            if(CACHED_COOKIE) {
+                document.getElementById('cookieStatus').style.display = 'block';
+            } else if (!localStorage.getItem('guest_mode')) {
+                // Show Login Modal if no cookie and not guest
+                document.getElementById('loginModal').classList.add('open');
+            }
+
+            // Check Deer Mode
+            if (localStorage.getItem('deer_unlocked')) {
+                document.getElementById('deerBtn').style.display = 'flex';
+            }
+
             // Check URL for direct ID access
+            // Match /artworks/12345 or ?id=12345
             const path = window.location.pathname;
-            const idMatch = path.match(/\/artworks\/(\d+)/) || window.location.search.match(/id=(\d+)/);
+            const artworksMatch = path.match(/^\/artworks\/(\d+)$/);
+            const idQueryMatch = window.location.search.match(/id=(\d+)/);
+            const id = (artworksMatch && artworksMatch[1]) || (idQueryMatch && idQueryMatch[1]);
             
-            if (idMatch) {
-                loadDetail(idMatch[1]);
+            if (id) {
+                // If it's a direct link, we might want to hide the home grid initially
+                currentState = { view: 'detail', page: 1, query: '', data: [] };
+                loadDetail(id);
             } else {
                 loadRanking();
             }
         });
+
+        window.onpopstate = function(event) {
+            // Simple handling for browser back button
+            if (event.state && event.state.id) {
+                loadDetail(event.state.id);
+            } else {
+                // Go back to list view
+                if (document.querySelector('.detail-container')) {
+                     // If we are in detail view, go back effectively
+                     // But we need to check if we have data.
+                     if (currentState.data.length > 0) {
+                        document.getElementById('detailToolbar').classList.remove('active');
+                        renderGrid(currentState.data, '今日排行榜');
+                     } else {
+                        goHome();
+                    }
+                }
+            }
+        };
 
         function initBackground() {
             const bg = document.getElementById('bg-layer'); const img = new Image();
@@ -178,8 +683,24 @@
 
         // --- Navigation ---
         async function goHome() {
+            document.body.classList.remove('deer-mode-active');
             currentState = { view: 'home', page: 1, query: '', data: [] };
+            // Keep currentMode and currentCategory
             document.getElementById('searchInput').value = '';
+            loadRanking();
+        }
+
+        async function setCategory(cat) {
+            if (currentCategory === cat) return;
+            currentCategory = cat;
+            currentState = { view: 'home', page: 1, query: '', data: [] };
+            loadRanking();
+        }
+
+        async function setMode(mode) {
+            if (currentMode === mode) return;
+            currentMode = mode;
+            currentState = { view: 'home', page: 1, query: '', data: [] };
             loadRanking();
         }
 
@@ -187,32 +708,462 @@
             if (e.key === 'Enter') {
                 const query = e.target.value.trim();
                 if (!query) return;
+
+                // Hidden Trigger for Deer Mode
+                if (query === '/deer' || query === '🦌') {
+                    if (localStorage.getItem('deer_unlocked')) {
+                        loadDeerView();
+                    } else {
+                        openModal('deerAuthModal');
+                    }
+                    e.target.value = '';
+                    return;
+                }
+
+                document.body.classList.remove('deer-mode-active');
                 currentState = { view: 'search', page: 1, query: query, data: [] };
                 loadSearch(query);
             }
         }
 
+        // Deer Mode Logic
+        async function verifyDeer() {
+            const password = document.getElementById('deerPassword').value;
+            if(!password) return;
+
+            try {
+                const res = await fetch('/api/verify_deer', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password })
+                });
+                
+                const data = await res.json();
+                
+                if (res.ok && data.success) {
+                    closeModal('deerAuthModal');
+                    
+                    // Save unlock state
+                    localStorage.setItem('deer_unlocked', 'true');
+                    document.getElementById('deerBtn').style.display = 'flex';
+
+                    loadDeerView();
+                    
+                    // Confetti Effect (Shooting from bottom)
+                    var duration = 5000;
+                    var end = Date.now() + duration;
+
+                    (function frame() {
+                        confetti({
+                            particleCount: 5,
+                            angle: 90,
+                            spread: 100,
+                            startVelocity: 40,
+                            origin: { y: 1, x: Math.random() },
+                            colors: ['#ff4060', '#ff99cc', '#ffffff'],
+                            gravity: 0.8,
+                            scalar: 1.2,
+                            drift: (Math.random() - 0.5) * 2
+                        });
+
+                        if (Date.now() < end) {
+                            requestAnimationFrame(frame);
+                        }
+                    }());
+
+                    showToast('🦌模式已启动，机长准备起飞🚀');
+                } else {
+                    showToast('⛔ ACCESS DENIED');
+                    document.getElementById('deerPassword').value = '';
+                }
+            } catch(e) {
+                showToast('Error: ' + e.message);
+            }
+        }
+
+        async function loadDeerView(query = null, cachedData = null) {
+            document.body.classList.add('deer-mode-active');
+            // Read settings
+            const includeTags = localStorage.getItem('deer_tags_include') || '';
+            const excludeTags = localStorage.getItem('deer_tags_exclude') || '';
+            
+            // Construct query string if not passed explicitly (though query param here is mostly for recursion/updates)
+            // If query is passed (e.g. from tag click), we might want to override or append? 
+            // Current behavior: Single tag click calls updateDeerTags which sets include and reloads.
+            
+            // Let's build the full query string for API
+            let apiQuery = '';
+            
+            if (query) {
+                 // Direct query override
+                 apiQuery = query;
+            } else {
+                const parts = [];
+                if (includeTags) parts.push(includeTags);
+                if (excludeTags) {
+                    const excludes = excludeTags.split(/\s+/).filter(t=>t).map(t => `-${t}`).join(' ');
+                    if(excludes) parts.push(excludes);
+                }
+                apiQuery = parts.join(' ');
+            }
+
+            currentState = { view: 'deer', page: 1, query: apiQuery, data: cachedData || [] };
+            
+            // Initial Skeleton for Masonry
+            document.getElementById('mainContainer').innerHTML = `
+                <div class="deer-layout">
+                    <div id="deerMasonry" class="deer-masonry"></div>
+                    <div class="loading-spinner" id="deerLoading"></div>
+                    
+                    <div id="deerIsland" class="deer-settings-island">
+                        <div class="deer-island-icon" onclick="toggleDeerSettings()">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line><line x1="17" y1="16" x2="23" y2="16"></line></svg>
+                        </div>
+                        <div class="deer-island-content" onclick="event.stopPropagation()">
+                            <h3 style="margin:0 0 20px 0; font-size:1.1rem; display:flex; align-items:center; gap:8px;">
+                                <span style="font-size:1.4rem;">🦌</span> 偏好设置
+                            </h3>
+                            <div style="flex:1; overflow-y:auto; padding-right:4px;">
+                                <div style="margin-bottom: 20px;">
+                                    <label style="display:block;margin-bottom:8px;font-weight:600;color:var(--text-primary);font-size:0.9rem;">🔍 包含标签</label>
+                                    <div id="deerTagsIncludeList" class="tag-input-container"></div>
+                                </div>
+                                <div>
+                                    <label style="display:block;margin-bottom:8px;font-weight:600;color:#ff4060;font-size:0.9rem;">🚫 屏蔽标签</label>
+                                    <div id="deerTagsExcludeList" class="tag-input-container"></div>
+                                </div>
+                            </div>
+                            <div style="margin-top:20px; display:flex; justify-content:flex-end; gap:12px;">
+                                <button class="dialog-btn" onclick="toggleDeerSettings()">取消</button>
+                                <button class="dialog-btn primary" onclick="saveDeerSettings()">保存并刷新</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // Initialize Tags UI
+            renderTagChips('deerTagsIncludeList', includeTags);
+            renderTagChips('deerTagsExcludeList', excludeTags);
+
+            if (cachedData) {
+                document.getElementById('deerLoading').style.display = 'none';
+                if(cachedData.length > 0) {
+                    renderDeerMasonry(cachedData);
+                } else {
+                    document.getElementById('deerMasonry').innerHTML = `<div style="text-align:center;padding:40px;column-span:all;">暂无推荐内容</div>`;
+                }
+                return;
+            }
+
+            try {
+                const headers = CACHED_COOKIE ? { 'x-user-cookie': CACHED_COOKIE } : {};
+                let url = '/api/deer';
+                if (apiQuery) url += `?tags=${encodeURIComponent(apiQuery)}`;
+                
+                const res = await fetch(url, { headers });
+                const data = await res.json();
+                
+                document.getElementById('deerLoading').style.display = 'none';
+                
+                if(data.items && data.items.length > 0) {
+                    currentState.data = data.items;
+                    renderDeerMasonry(data.items);
+                } else {
+                    document.getElementById('deerMasonry').innerHTML = `<div style="text-align:center;padding:40px;column-span:all;">暂无推荐内容</div>`;
+                }
+
+            } catch(e) {
+                showToast('加载失败: ' + e.message);
+            }
+        }
+
+        function toggleDeerSettings() {
+            const el = document.getElementById('deerIsland');
+            el.classList.toggle('expanded');
+            
+            // Re-render tags on open to ensure sync
+            if(el.classList.contains('expanded')) {
+                renderTagChips('deerTagsIncludeList', localStorage.getItem('deer_tags_include')||'');
+                renderTagChips('deerTagsExcludeList', localStorage.getItem('deer_tags_exclude')||'');
+            }
+        }
+
+        function renderTagChips(containerId, tagString) {
+            const container = document.getElementById(containerId);
+            if(!container) return;
+            const tags = tagString.split(/\s+/).filter(t => t);
+            
+            container.innerHTML = tags.map(t => `
+                <div class="tag-chip" onclick="removeTag(this)">#${t}</div>
+            `).join('') + `
+                <button class="add-tag-btn" onclick="showTagInput(this)">+</button>
+            `;
+        }
+
+        function showTagInput(btn) {
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'tag-edit-input';
+            input.placeholder = 'Tag...';
+            
+            input.onblur = function() { confirmAddTag(this); };
+            input.onkeydown = function(e) { if(e.key === 'Enter') { this.blur(); } };
+            
+            btn.replaceWith(input);
+            input.focus();
+        }
+
+        function confirmAddTag(input) {
+            const val = input.value.trim();
+            const container = input.parentElement;
+            
+            if (val) {
+                const chip = document.createElement('div');
+                chip.className = 'tag-chip';
+                chip.innerText = '#' + val;
+                chip.onclick = function() { removeTag(this); };
+                container.insertBefore(chip, input);
+            }
+            
+            // Restore button
+            const btn = document.createElement('button');
+            btn.className = 'add-tag-btn';
+            btn.innerText = '+';
+            btn.onclick = function() { showTagInput(this); };
+            input.replaceWith(btn);
+        }
+
+        function removeTag(chip) {
+            chip.remove();
+        }
+
+        function getTagsFromContainer(containerId) {
+            const container = document.getElementById(containerId);
+            const chips = container.querySelectorAll('.tag-chip');
+            return Array.from(chips).map(c => c.innerText.replace(/^#/, '')).join(' ');
+        }
+
+        function saveDeerSettings() {
+            const inc = getTagsFromContainer('deerTagsIncludeList');
+            const exc = getTagsFromContainer('deerTagsExcludeList');
+            
+            if (inc) localStorage.setItem('deer_tags_include', inc);
+            else localStorage.removeItem('deer_tags_include');
+            
+            if (exc) localStorage.setItem('deer_tags_exclude', exc);
+            else localStorage.removeItem('deer_tags_exclude');
+            
+            toggleDeerSettings(); // Close island
+            setTimeout(() => loadDeerView(), 300); // Reload after animation
+            showToast('设置已保存');
+        }
+
+        function updateDeerTags(val) {
+            // When clicking a tag, we ADD it to the include list if not present
+            val = val.trim();
+            if(!val) return;
+            
+            let currentTags = (localStorage.getItem('deer_tags_include') || '').split(/\s+/).filter(t=>t);
+            
+            if(!currentTags.includes(val)) {
+                currentTags.push(val);
+                localStorage.setItem('deer_tags_include', currentTags.join(' '));
+                showToast(`已添加标签: ${val}`);
+                loadDeerView();
+            } else {
+                showToast(`标签已存在: ${val}`);
+            }
+        }
+
+        function excludeDeerTag(e, val) {
+            e.preventDefault();
+            e.stopPropagation();
+            val = val.trim();
+            if(!val) return;
+
+            let currentTags = (localStorage.getItem('deer_tags_exclude') || '').split(/\s+/).filter(t=>t);
+            
+            if(!currentTags.includes(val)) {
+                currentTags.push(val);
+                localStorage.setItem('deer_tags_exclude', currentTags.join(' '));
+                showToast(`已屏蔽标签: ${val}`);
+                loadDeerView();
+            } else {
+                showToast(`标签已在屏蔽列表中: ${val}`);
+            }
+            return false;
+        }
+
+        // Long press helper variables
+        let longPressTimer = null;
+        let isLongPress = false;
+
+        function handleTagTouchStart(e, tag) {
+            isLongPress = false;
+            longPressTimer = setTimeout(() => {
+                isLongPress = true;
+                if(navigator.vibrate) navigator.vibrate(50);
+                excludeDeerTag(e, tag);
+            }, 500);
+        }
+
+        function handleTagTouchMove() {
+            clearTimeout(longPressTimer);
+        }
+
+        function handleTagTouchEnd(e) {
+            clearTimeout(longPressTimer);
+            if (isLongPress) {
+                if(e.cancelable) e.preventDefault();
+            }
+        }
+
+        function renderDeerMasonry(items) {
+            const fmt = n => {
+                if(n >= 10000) return (n/10000).toFixed(1) + '万';
+                return n.toLocaleString();
+            };
+
+            const html = items.map(item => {
+                let originalUrl = item.url
+                    .replace(/\/c\/[a-zA-Z0-9_]+/, '')
+                    .replace('img-master', 'img-original')
+                    .replace(/_(square|master)\d+/, '');
+                
+                return `
+                <div class="deer-card">
+                    <div class="deer-header">
+                        <div class="deer-avatar"><img src="${getMirrorUrl(item.userImage)}" loading="lazy"></div>
+                        <div class="deer-name">${item.userName}</div>
+                        <div class="deer-stats">
+                            ${(item.viewCount !== undefined && item.viewCount !== null) ? `
+                            <div class="deer-stat-item">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                                ${fmt(item.viewCount)}
+                            </div>` : ''}
+                            ${(item.bookmarkCount !== undefined && item.bookmarkCount !== null) ? `
+                            <div class="deer-stat-item">
+                                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"></path></svg>
+                                ${fmt(item.bookmarkCount)}
+                            </div>` : ''}
+                        </div>
+                    </div>
+                    
+                    <div class="deer-image" onclick="loadDetail('${item.id}')">
+                        <img src="${getMirrorUrl(originalUrl)}" 
+                             loading="lazy" 
+                             onload="this.style.opacity=1" 
+                             onerror="if(!this.dataset.retried){this.dataset.retried=true; this.src=this.src.replace('.jpg','.png');}"
+                             style="opacity:0;"
+                        >
+                    </div>
+
+                    <div class="deer-tags">
+                        ${(item.tags || []).slice(0, 8).map(t => `<a class="deer-tag" href="javascript:void(0)" 
+                            onclick="if(!isLongPress) { updateDeerTags('${t}'); } event.stopPropagation();" 
+                            oncontextmenu="excludeDeerTag(event, '${t}');return false;"
+                            ontouchstart="handleTagTouchStart(event, '${t}')"
+                            ontouchmove="handleTagTouchMove()"
+                            ontouchend="handleTagTouchEnd(event)"
+                        >#${t}</a>`).join('')}
+                    </div>
+                </div>
+            `}).join('');
+            
+            document.getElementById('deerMasonry').innerHTML = html;
+        }
+
+
+
+        function renderSidebarUsers(users) {
+            const html = users.map(u => `
+                <div class="user-row">
+                    <div class="user-row-avatar"><img src="${getMirrorUrl(u.img)}" loading="lazy"></div>
+                    <div class="user-row-info">
+                        <div class="user-row-name">${u.name}</div>
+                    </div>
+                    <button class="follow-btn">关注</button>
+                </div>
+            `).join('');
+            document.getElementById('recUsersList').innerHTML = html;
+        }
+
         function goBack() {
             document.getElementById('detailToolbar').classList.remove('active');
+            
+            // Restore URL to root
+            window.history.pushState({}, '', '/');
+
             // Re-render previous state
-            if (currentState.view === 'home') renderGrid(currentState.data, '今日排行榜');
+            if (currentState.view === 'home') {
+                // If we came directly to a detail page, 'home' data might be empty.
+                // In that case, load home.
+                if (currentState.data.length === 0) {
+                    goHome();
+                } else {
+                    renderGrid(currentState.data, '今日排行榜'); // or '发现' if we tracked that title
+                }
+            }
             else if (currentState.view === 'search') renderGrid(currentState.data, `搜索: ${currentState.query}`);
+            else if (currentState.view === 'deer') loadDeerView(currentState.query, currentState.data);
         }
 
         // --- Data Fetching ---
         async function loadRanking(append = false) {
+            // For Discovery, we don't need 'p' actually, but Pixiv discovery is weird.
+            // Let's assume user wants 'Discovery' experience on home.
+            // If we are on home, we load discovery if possible, else ranking.
+            
+            // NOTE: Changing Home to Discovery as requested.
+            // Discovery API: /api/discovery
+            
             if (!append) showLoading();
+            
+            const isDiscovery = true; // Force Discovery on Home
+            
             try {
                 const headers = CACHED_COOKIE ? { 'x-user-cookie': CACHED_COOKIE } : {};
-                const res = await fetch(`/ranking?mode=daily&p=${currentState.page}`, { headers });
+                
+                let res;
+                if (isDiscovery) {
+                    // Discovery often doesn't need page, just limit. But we keep page for state consistency
+                    res = await fetch(`/discovery?mode=${currentMode}&category=${currentCategory}&limit=60`, { headers });
+                } else {
+                    // Ranking doesn't support 'category' param yet in our API proxy, but we are focusing on Discovery.
+                    // If we fall back to ranking, we might need to adjust content type.
+                    // api/ranking.js accepts 'content'.
+                    // content: 'illust' (default) or 'novel' ?
+                    // Let's assume we stick to discovery for now.
+                    res = await fetch(`/ranking?mode=daily&p=${currentState.page}`, { headers });
+                }
+
                 const data = await res.json();
                 
+                if (data.error) throw new Error(data.error);
+
                 if (append) currentState.data = [...currentState.data, ...data.items];
                 else currentState.data = data.items;
 
-                renderGrid(currentState.data, '今日排行榜', true);
+                // Pass only new items if appending, otherwise pass all
+                renderGrid(append ? data.items : currentState.data, isDiscovery ? '发现' : '今日排行榜', true);
             } catch (e) {
-                showToast('加载失败: ' + e.message);
+                // Fallback to ranking if discovery fails (e.g. no cookie)
+                if (isDiscovery && !append && currentState.data.length === 0) {
+                     console.warn('Discovery failed, falling back to ranking');
+                     // Manually fetch ranking
+                     try {
+                        const headers = CACHED_COOKIE ? { 'x-user-cookie': CACHED_COOKIE } : {};
+                        const res = await fetch(`/ranking?mode=daily&p=${currentState.page}`, { headers });
+                        const data = await res.json();
+                        currentState.data = data.items;
+                        renderGrid(currentState.data, '今日排行榜', true);
+                     } catch(err) {
+                        showToast('加载失败: ' + err.message);
+                     }
+                } else {
+                    showToast('加载失败: ' + e.message);
+                }
             }
         }
 
@@ -226,7 +1177,7 @@
                 if (append) currentState.data = [...currentState.data, ...data.items];
                 else currentState.data = data.items;
 
-                renderGrid(currentState.data, `搜索: ${query}`, true);
+                renderGrid(append ? data.items : currentState.data, `搜索: ${query}`, true);
             } catch (e) {
                 showToast('搜索失败: ' + e.message);
             }
@@ -238,9 +1189,15 @@
             framesCache = null;
             document.getElementById('detailToolbar').classList.remove('active');
             
+            // Update URL without reloading if not already there
+            if (!window.location.pathname.includes(`/artworks/${id}`)) {
+                window.history.pushState({id}, '', `/artworks/${id}`);
+            }
+            
             try {
                 const headers = CACHED_COOKIE ? { 'x-user-cookie': CACHED_COOKIE } : {};
-                const res = await fetch(`/analyze/${id}`, { headers });
+                // Pass currentCategory as type (illust or novel)
+                const res = await fetch(`/analyze/${id}?type=${currentCategory}`, { headers });
                 const data = await res.json();
                 
                 if(data.error) throw new Error(data.error);
@@ -259,26 +1216,129 @@
 
         function renderGrid(items, title, hasMore = false) {
             const container = document.getElementById('mainContainer');
-            container.innerHTML = `
-                <div class="section-title">
+            
+            // Generate Tabs HTML (Only show on Home)
+            const tabsHtml = currentState.view === 'home' ? `
+                <div class="filter-tabs">
+                    <div class="type-switch">
+                        <span onclick="setCategory('illust')" class="${currentCategory==='illust'?'active':''}">插画·漫画</span>
+                        <span onclick="setCategory('novel')" class="${currentCategory==='novel'?'active':''}">小说</span>
+                    </div>
+                    <div class="rating-switch">
+                        <span onclick="setMode('all')" class="${currentMode==='all'?'active':''}">全部</span>
+                        <span onclick="setMode('safe')" class="${currentMode==='safe'?'active':''}">全年龄</span>
+                        <span onclick="setMode('r18')" class="${currentMode==='r18'?'active':''}">R-18</span>
+                    </div>
+                </div>
+            ` : '';
+
+            const sectionTitleHtml = `
+                <div class="section-title" style="${currentState.view === 'home' ? 'display:none' : ''}">
                     <button class="back-btn" style="display:${currentState.view === 'home' ? 'none' : 'flex'}" onclick="goHome()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg></button>
                     ${title}
-                </div>
-                <div class="grid-view">
-                    ${items.map((item, idx) => `
-                        <div class="art-card" onclick="loadDetail('${item.id}')" style="animation-delay:${Math.min(idx * 50, 1000)}ms">
-                            ${item.isR18 ? '<span class="r18-badge">R-18</span>' : ''}
-                            ${item.pageCount > 1 ? `<span class="page-badge"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line></svg> ${item.pageCount}</span>` : ''}
-                            <img src="${getMirrorUrl(item.url)}" loading="lazy" decoding="async">
-                            <div class="meta">
-                                <div class="art-title">${item.title}</div>
-                                <div class="art-user">${item.userName}</div>
-                            </div>
+                </div>`;
+            
+            // Choose renderer based on category
+            const renderFn = currentCategory === 'novel' ? renderNovelItems : renderItems;
+            const containerClass = currentCategory === 'novel' ? 'novel-list' : 'grid-view';
+
+            // Append logic: If not appending (page 1), replace all content
+            if (currentState.page === 1) {
+                container.innerHTML = `
+                    ${tabsHtml}
+                    ${sectionTitleHtml}
+                    <div class="${containerClass}" id="gridView">
+                        ${renderFn(items)}
+                    </div>
+                    ${hasMore ? `<div id="scrollSentinel" style="height: 50px; margin-top: 20px;"></div>` : ''}
+                `;
+            } else {
+                // If appending, just append new items to grid-view
+                const gridView = document.getElementById('gridView');
+                if (gridView) {
+                    // Update class if changed (unlikely in append but good safety)
+                    gridView.className = containerClass;
+                    gridView.insertAdjacentHTML('beforeend', renderFn(items));
+                }
+            }
+            
+            if (hasMore) {
+                setupInfiniteScroll();
+            }
+        }
+
+        function renderItems(items) {
+            return items.map((item, idx) => `
+                <div class="art-card" onclick="if(!event.target.closest('.art-title') && !event.target.closest('.art-author')) loadDetail('${item.id}')" style="animation-delay:${Math.min(idx * 50, 1000)}ms">
+                    <div class="art-cover" style="pointer-events: none;">
+                        ${item.isR18 ? '<span class="r18-badge">R-18</span>' : ''}
+                        ${item.isUgoira ? `<span class="ugoira-badge"><svg viewBox="0 0 24 24" width="10" height="10" fill="currentColor"><path d="M8 5v14l11-7z"></path></svg> 动图</span>` : ''}
+                        ${!item.isUgoira && item.pageCount > 1 ? `<span class="page-badge"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line></svg> ${item.pageCount}</span>` : ''}
+                        <img src="${getMirrorUrl(item.url)}" loading="lazy" decoding="async">
+                    </div>
+                    <div class="art-meta-row">
+                        <a class="art-title" onclick="event.stopPropagation()">${item.title}</a>
+                        <div class="art-author">
+                            <div class="author-avatar"><img src="${getMirrorUrl(item.userImage)}" loading="lazy"></div>
+                            <a class="author-name" onclick="event.stopPropagation()">${item.userName}</a>
                         </div>
-                    `).join('')}
+                    </div>
                 </div>
-                ${hasMore ? `<button class="load-more-btn" onclick="loadMore()">加载更多</button>` : ''}
-            `;
+            `).join('');
+        }
+
+        function renderNovelItems(items) {
+            return items.map((item, idx) => {
+                // Strip HTML from description to prevent layout breakage
+                const rawDesc = item.description || '';
+                const plainDesc = rawDesc.replace(/<[^>]+>/g, '').substring(0, 200);
+
+                return `
+                <div class="novel-card" onclick="if(!event.target.closest('a')) loadDetail('${item.id}')" style="animation-delay:${Math.min(idx * 50, 1000)}ms">
+                    <div class="novel-cover">
+                         <img src="${getMirrorUrl(item.url)}" loading="lazy">
+                         ${item.isR18 ? '<span class="r18-badge" style="top:4px;right:4px;font-size:0.6rem;padding:1px 4px;">R-18</span>' : ''}
+                    </div>
+                    <div class="novel-info">
+                        <div class="novel-title">${item.title}</div>
+                        ${item.series ? `<div class="novel-series">${item.series}</div>` : ''}
+                        
+                        <div class="novel-author">
+                            <img src="${getMirrorUrl(item.userImage)}" loading="lazy">
+                            <span>${item.userName}</span>
+                        </div>
+
+                        <div class="novel-tags">
+                            ${(item.tags || []).slice(0, 5).map(t => `<span class="novel-tag">#${t}</span>`).join('')}
+                        </div>
+
+                        <div class="novel-desc">${plainDesc}</div>
+                        
+                        <div class="novel-meta">
+                            <span>${(item.textCount||0).toLocaleString()}字</span>
+                            ${item.readingTime ? `<span>${Math.ceil(item.textCount / 500)}分钟</span>` : ''} 
+                            <span><svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z"></path></svg> ${item.bookmarkCount}</span>
+                            <svg class="bookmark-icon" viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"></path></svg>
+                        </div>
+                    </div>
+                </div>
+            `}).join('');
+        }
+
+        let observer = null;
+        function setupInfiniteScroll() {
+            if (observer) observer.disconnect();
+            
+            const sentinel = document.getElementById('scrollSentinel');
+            if (!sentinel) return;
+
+            observer = new IntersectionObserver((entries) => {
+                if (entries[0].isIntersecting) {
+                    loadMore();
+                }
+            }, { rootMargin: '200px' });
+            
+            observer.observe(sentinel);
         }
 
         function loadMore() {
@@ -289,10 +1349,23 @@
 
         function renderDetail(data) {
             const container = document.getElementById('mainContainer');
-            const tagsHtml = (data.tags || []).map(t => `<span class="tag-pill" onclick="searchTag('${t}')">#${t}</span>`).join('');
             
+            // Format numbers
+            const fmt = (n) => n ? n.toLocaleString() : '0';
+            const createDate = new Date(data.createDate).toLocaleString('zh-CN', {year:'numeric', month:'long', day:'numeric', hour:'2-digit', minute:'2-digit'});
+
+            // Left Content (Images or Novel Text)
             let contentHtml = '';
-            if (data.isUgoira) {
+            if (data.isNovel) {
+                contentHtml = `
+                    <div style="background:var(--surface-card); padding:40px; border-radius:var(--r-lg); font-size:1.1rem; line-height:1.8; white-space:pre-wrap; font-family:'Segoe UI', serif; color:var(--text-primary); box-shadow:0 4px 20px rgba(0,0,0,0.3);">
+                        <h2 style="margin-bottom:20px; border-bottom:1px solid var(--surface-stroke); padding-bottom:10px;">${data.title}</h2>
+                        ${data.content}
+                    </div>
+                `;
+                document.getElementById('dlBtn') && (document.getElementById('dlBtn').style.display = 'none');
+                document.getElementById('gifBtn').style.display = 'none';
+            } else if (data.isUgoira) {
                 contentHtml = `
                     <div class="ugoira-container">
                         <img src="${getMirrorUrl(data.cover)}" id="ugoiraCover" style="width:100%; display:block;">
@@ -308,18 +1381,109 @@
                 document.getElementById('gifBtn').style.display = 'none';
             }
 
+            // Right Content (Info)
+            const tagsHtml = (data.tags || []).map(t => `<span class="tag-pill" onclick="searchTag('${t}')">#${t}</span>`).join('');
+            
+            const recHtml = (data.authorRecommended && data.authorRecommended.length > 0) ? `
+                <div class="rec-title">作者其他作品</div>
+                <div class="rec-list">
+                    ${data.authorRecommended.map(item => `
+                        <a class="rec-item" href="javascript:loadDetail('${item.id}')" title="${item.title}">
+                            <img src="${getMirrorUrl(item.url)}" loading="lazy">
+                        </a>
+                    `).join('')}
+                </div>
+            ` : '';
+
+            // Render
             container.innerHTML = `
                 <div class="detail-container">
-                    <div class="detail-header">
-                        <div class="detail-title">${data.title} ${data.isR18 ? '<span style="color:#ff4757;font-size:1rem;vertical-align:middle;border:1px solid currentColor;padding:2px 6px;border-radius:4px;">R-18</span>' : ''}</div>
-                        <div class="detail-meta" style="flex-wrap:wrap; gap:8px;">${tagsHtml}</div>
+                    <div class="detail-left">
+                        ${contentHtml}
                     </div>
-                    ${contentHtml}
+                    
+                    <div class="detail-right">
+                        <div class="info-card">
+                            <div class="work-title">
+                                <span id="titleOriginal">${data.title}</span>
+                                <div id="titleTranslated" style="font-size:1rem; color:var(--text-secondary); font-weight:normal; margin-top:4px; display:none;"></div>
+                                ${data.isR18 ? '<span class="r18-badge" style="position:static;display:inline-block;vertical-align:middle;margin-left:8px;">R-18</span>' : ''}
+                            </div>
+                            
+                            <a href="https://www.pixiv.net/users/${data.userId}" target="_blank" class="author-section">
+                                <div class="author-avatar-lg"><img src="${getMirrorUrl(data.userImage)}" loading="lazy"></div>
+                                <div class="author-info">
+                                    <div class="author-name-lg">${data.userName}</div>
+                                    <div class="author-id">ID: ${data.userId}</div>
+                                </div>
+                            </a>
+
+                            <div class="work-stats">
+                                <div class="stat-item" title="浏览量"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg> ${fmt(data.viewCount)}</div>
+                                <div class="stat-item" title="收藏数"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg> ${fmt(data.bookmarkCount)}</div>
+                                <div class="stat-item" title="赞"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path></svg> ${fmt(data.likeCount)}</div>
+                            </div>
+
+                            <div class="tag-list">${tagsHtml}</div>
+                            
+                            <div class="work-desc" style="${!data.description?'display:none':''}">
+                                <div id="descOriginal">${data.description}</div>
+                                <div id="descTranslated" style="margin-top:12px; padding-top:12px; border-top:1px dashed var(--surface-stroke); color:var(--text-primary); display:none;"></div>
+                            </div>
+
+                            ${recHtml}
+
+                            <div class="meta-info">
+                                <span>${createDate}</span>
+                                <span>ID: ${data.id}</span>
+                            </div>
+
+                            <div class="action-bar">
+                                ${data.isNovel ? `
+                                    <button class="action-btn primary" onclick="downloadNovel()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg> 下载 TXT</button>
+                                    <button class="action-btn" onclick="window.open('https://www.pixiv.net/novel/show.php?id=${data.id}', '_blank')"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg> 查看源站</button>
+                                ` : `
+                                    <button class="action-btn primary" onclick="downloadHandler()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg> 下载原图</button>
+                                    <button class="action-btn" onclick="window.open('https://www.pixiv.net/artworks/${data.id}', '_blank')"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg> 查看源站</button>
+                                `}
+                            </div>
+                        </div>
+                    </div>
                 </div>
             `;
 
             document.getElementById('detailToolbar').classList.add('active');
             window.scrollTo(0, 0);
+
+            // Auto Translate
+            translateText(data.title, 'titleTranslated');
+            // Remove HTML tags for description translation to avoid breaking formatting too much, 
+            // or just translate plain text. Google Translate handles HTML partially but safer to strip for basic check.
+            // Actually let's just translate.
+            if(data.description) {
+                const plainDesc = data.description.replace(/<[^>]+>/g, ''); // Simple strip
+                if(plainDesc.trim()) translateText(plainDesc, 'descTranslated');
+            }
+        }
+
+        async function translateText(text, targetId) {
+            try {
+                // Simple check if text contains Japanese/Korean/English to avoid translating Chinese
+                // Regex for Chinese chars: \u4e00-\u9fa5
+                // If text is mostly Chinese, skip.
+                const zhCount = (text.match(/[\u4e00-\u9fa5]/g) || []).length;
+                if (zhCount > text.length * 0.6) return; // Assume it's already Chinese
+
+                const res = await fetch(`/translate?text=${encodeURIComponent(text)}`);
+                const data = await res.json();
+                if(data.text && data.text !== text) {
+                    const el = document.getElementById(targetId);
+                    el.innerText = data.text;
+                    el.style.display = 'block';
+                }
+            } catch(e) {
+                console.warn('Translate failed', e);
+            }
         }
 
         function searchTag(tag) {
@@ -405,6 +1569,18 @@
             }
         }
 
+        async function downloadNovel() {
+            if (!currentDetail) return;
+            showToast('开始下载...');
+            try {
+                const blob = new Blob([currentDetail.content], { type: "text/plain;charset=utf-8" });
+                saveAs(blob, `Pixiv_Novel_${currentDetail.title}.txt`);
+                showToast('✅ 下载完成');
+            } catch(e) {
+                showToast('❌ 下载失败');
+            }
+        }
+
         async function downloadHandler() {
             if (!currentDetail) return;
             showToast('开始下载...');
@@ -424,6 +1600,18 @@
             } catch(e) {
                 showToast('❌ 下载失败');
             }
+        }
+
+        // Login Logic
+        function handleGuest() {
+            localStorage.setItem('guest_mode', 'true');
+            closeModal('loginModal');
+            showToast('已进入游客模式');
+        }
+
+        function showCookieInput() {
+            closeModal('loginModal');
+            openModal('settingsModal');
         }
 
         // Utils

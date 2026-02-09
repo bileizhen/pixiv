@@ -13,7 +13,16 @@
 
 ## 📖 简介
 
-这是一个运行在 Vercel 上的 Pixiv 图片第三方镜像站。不同于普通的 Nginx 转发，本项目提供了一个**全功能的 Fluent Design 2.0 前端界面**，支持智能解析 Pixiv 作品链接，查看高清原图、播放/下载动图（Ugoira），并支持导出 GIF。
+**Pixiv Mirror Pro** 是一个精心打造的现代化 Pixiv 浏览客户端，部署于 Vercel Edge Runtime 之上。
+
+它摒弃了传统镜像站简陋的界面，采用**深度定制的 Fluent Design 2.0 设计语言**，为用户提供沉浸式的浏览体验。无论是 PC 还是移动端，都能享受丝滑的动画与响应式布局。核心功能包括：
+
+*   **极致性能**：基于 Edge Runtime 的流式传输，秒开原画级大图与动图。
+*   **动图专家**：内置高性能 Ugoira 播放器，支持一键合成并导出 GIF。
+*   **无缝体验**：支持触屏手势优化，移动端操作更顺手，支持剪贴板自动解析。
+*   **隐私安全**：所有敏感数据（如 Cookie）仅存储于本地浏览器，零服务端留存。
+
+无需服务器，Fork 本项目即可免费拥有一套私有的 Pixiv 高级客户端。
 
 后端采用 **Edge Runtime** 构建，彻底突破 Vercel 普通函数的 4.5MB 响应限制，支持超大动图和 ZIP 包的流式传输。
 
@@ -88,7 +97,11 @@
 .
 ├── api/
 │   ├── index.js        # [核心] 图片镜像接口 (Edge Runtime)，处理大文件下载
-│   └── analyze.js      # [核心] 信息解析接口 (Node.js)，处理元数据和 Cookie 逻辑
+│   ├── analyze.js      # [核心] 信息解析接口 (Node.js)，处理元数据和 Cookie 逻辑
+│   ├── discovery.js    # 发现/推荐流接口
+│   ├── search.js       # 搜索接口
+│   ├── ranking.js      # 排行榜接口
+│   └── translate.js    # 翻译接口
 ├── public/
 │   └── index.html      # 前端单页应用 (Fluent Design + JSZip + Gif.js)
 ├── vercel.json         # 路由重写规则

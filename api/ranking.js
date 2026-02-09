@@ -1,4 +1,6 @@
 
+import { ProxyAgent } from 'undici';
+
 export default async function handler(req, res) {
   const { mode = 'daily', content = 'illust', p = 1 } = req.query;
 
@@ -17,11 +19,14 @@ export default async function handler(req, res) {
     headers['Cookie'] = `PHPSESSID=${process.env.PIXIV_PHPSESSID}`;
   }
 
+  // Proxy Configuration
+  const dispatcher = process.env.HTTPS_PROXY ? new ProxyAgent(process.env.HTTPS_PROXY) : undefined;
+
   try {
     // Pixiv Ranking API
     const targetUrl = `https://www.pixiv.net/ranking.php?mode=${mode}&content=${content}&p=${p}&format=json`;
     
-    const response = await fetch(targetUrl, { headers });
+    const response = await fetch(targetUrl, { headers, dispatcher });
     if (!response.ok) return res.status(response.status).json({ error: 'Failed to fetch ranking' });
 
     const data = await response.json();
@@ -35,7 +40,8 @@ export default async function handler(req, res) {
       height: item.height,
       tags: item.tags,
       url: item.url, // Thumbnail
-      isR18: item.tags.includes('R-18')
+      isR18: item.tags.includes('R-18'),
+      isUgoira: item.illust_type == 2
     }));
 
     res.setHeader('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=600');

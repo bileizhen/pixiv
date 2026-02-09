@@ -13,6 +13,26 @@
       "destination": "/api/search.js"
     },
     {
+      "source": "/discovery",
+      "destination": "/api/discovery.js"
+    },
+    {
+      "source": "/translate",
+      "destination": "/api/translate.js"
+    },
+    {
+      "source": "/artworks/:id",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/api/deer",
+      "destination": "/api/deer.js"
+    },
+    {
+      "source": "/api/verify_deer",
+      "destination": "/api/verify_deer.js"
+    },
+    {
       "source": "/(.*)",
       "destination": "/api/index.js"
     }
